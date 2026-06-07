@@ -1,15 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 
-const usersPath = path.join(process.cwd(), "data", "users.json");
+const USERS = [
+  {
+    email: process.env.USER1_EMAIL || "rafael@circuito.com",
+    senha: process.env.USER1_PASSWORD || "circuito2026",
+    nome: process.env.USER1_NAME || "Rafael",
+    role: process.env.USER1_ROLE || "admin",
+  },
+  {
+    email: process.env.USER2_EMAIL || "user2@circuito.com",
+    senha: process.env.USER2_PASSWORD || "circuito2026",
+    nome: process.env.USER2_NAME || "Usuário 2",
+    role: process.env.USER2_ROLE || "viewer",
+  },
+  {
+    email: process.env.USER3_EMAIL || "user3@circuito.com",
+    senha: process.env.USER3_PASSWORD || "circuito2026",
+    nome: process.env.USER3_NAME || "Usuário 3",
+    role: process.env.USER3_ROLE || "viewer",
+  },
+];
 
 export async function POST(req: NextRequest) {
   try {
     const { email, senha } = await req.json();
-    const raw = await fs.readFile(usersPath, "utf-8");
-    const users: Array<{ email: string; senha: string; nome: string; role: string }> = JSON.parse(raw);
-    const user = users.find((u) => u.email === email && u.senha === senha);
+    const user = USERS.find((u) => u.email === email && u.senha === senha);
     if (!user) {
       return NextResponse.json({ error: "Email ou senha inválidos." }, { status: 401 });
     }
