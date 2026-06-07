@@ -70,7 +70,7 @@ const EMPTY: FormData = {
   capacity: 350,
   trafficInvestment: 0,
   participantes_final: 0,
-  faturamento_final: 0,
+  faturamento_bruto: 0,
   status: "em_andamento",
   bandeira_tipo: "auto",
   bandeira_url: "",
@@ -200,8 +200,8 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
         </div>
         <div>
           <label className={labelClass}>Faturamento bruto do evento (R$)</label>
-          <input type="number" min="0" step="0.01" className={inputClass} value={form.faturamento_final}
-            onChange={(e) => set("faturamento_final", Number(e.target.value))} />
+          <input type="number" min="0" step="0.01" className={inputClass} value={form.faturamento_bruto}
+            onChange={(e) => set("faturamento_bruto", Number(e.target.value))} />
         </div>
       </div>
 

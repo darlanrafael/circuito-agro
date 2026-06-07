@@ -67,7 +67,7 @@ export function Dashboard({ events }: Props) {
 
   // Métricas financeiras calculadas dos eventos filtrados
   const trafficInvestment = filteredEvents.reduce((s, e) => s + e.trafficInvestment, 0);
-  const grossRevenue = filteredEvents.reduce((s, e) => s + (e.faturamento_final > 0 ? e.faturamento_final : 0), 0);
+  const grossRevenue = filteredEvents.reduce((s, e) => s + (e.faturamento_bruto > 0 ? e.faturamento_bruto : 0), 0);
   const netRevenue = grossRevenue * 0.8;
   const totalTickets = totalIndividual + totalDouble;
   const averageCPA = totalTickets > 0 ? trafficInvestment / totalTickets : 0;
