@@ -200,8 +200,8 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
         </div>
         <div>
           <label className={labelClass}>Faturamento bruto do evento (R$)</label>
-          <input type="number" min="0" step="0.01" className={inputClass} value={form.faturamento_bruto}
-            onChange={(e) => set("faturamento_bruto", Number(e.target.value))} />
+          <input type="text" inputMode="decimal" className={inputClass} value={form.faturamento_bruto}
+            onChange={(e) => set("faturamento_bruto", e.target.value as any)} />
         </div>
       </div>
 
