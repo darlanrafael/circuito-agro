@@ -25,8 +25,8 @@ export function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -67,7 +67,7 @@ export function AdminPage() {
     showSuccess("Evento adicionado com sucesso!");
   }
 
-  async function handleEdit(id: number, formData: Omit<AppEvent, "id">) {
+  async function handleEdit(id: string, formData: Omit<AppEvent, "id">) {
     const res = await fetch("/api/events", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -82,7 +82,7 @@ export function AdminPage() {
     showSuccess("Evento atualizado com sucesso!");
   }
 
-  async function handleDelete(id: number) {
+  async function handleDelete(id: string) {
     setDeleteLoading(true);
     try {
       const res = await fetch("/api/events", {
