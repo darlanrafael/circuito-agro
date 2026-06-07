@@ -56,15 +56,18 @@ export function Dashboard({ events }: Props) {
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
   }, [proximosFiltrados]);
 
-  const totalIndividual = events.reduce((s, e) => s + e.individualTickets, 0);
-  const totalDouble = events.reduce((s, e) => s + e.doubleTickets, 0);
-  const totalPeople = totalIndividual + totalDouble * 2;
-  const totalCapacity = events.length * 350;
-  const occupancyPct = Math.round((totalPeople / totalCapacity) * 100);
+  // Base para os cards: respeita o filtro de cidade
+  const filteredEvents = cityFilter === "all" ? events : events.filter((e) => e.city === cityFilter);
 
-  // Métricas financeiras calculadas dos eventos
-  const trafficInvestment = events.reduce((s, e) => s + e.trafficInvestment, 0);
-  const grossRevenue = events.reduce((s, e) => s + (e.faturamento_final > 0 ? e.faturamento_final : 0), 0);
+  const totalIndividual = filteredEvents.reduce((s, e) => s + e.individualTickets, 0);
+  const totalDouble = filteredEvents.reduce((s, e) => s + e.doubleTickets, 0);
+  const totalPeople = totalIndividual + totalDouble * 2;
+  const totalCapacity = filteredEvents.length * 350;
+  const occupancyPct = totalCapacity > 0 ? Math.round((totalPeople / totalCapacity) * 100) : 0;
+
+  // Métricas financeiras calculadas dos eventos filtrados
+  const trafficInvestment = filteredEvents.reduce((s, e) => s + e.trafficInvestment, 0);
+  const grossRevenue = filteredEvents.reduce((s, e) => s + (e.faturamento_final > 0 ? e.faturamento_final : 0), 0);
   const netRevenue = grossRevenue * 0.8;
   const totalTickets = totalIndividual + totalDouble;
   const averageCPA = totalTickets > 0 ? trafficInvestment / totalTickets : 0;

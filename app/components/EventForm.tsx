@@ -199,7 +199,7 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
             onChange={(e) => set("participantes_final", Number(e.target.value))} />
         </div>
         <div>
-          <label className={labelClass}>Faturamento final (R$)</label>
+          <label className={labelClass}>Faturamento bruto do evento (R$)</label>
           <input type="number" min="0" step="0.01" className={inputClass} value={form.faturamento_final}
             onChange={(e) => set("faturamento_final", Number(e.target.value))} />
         </div>
