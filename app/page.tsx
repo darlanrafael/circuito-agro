@@ -6,10 +6,7 @@ import eventsData from "../data/events.json";
 export default function Home() {
   return (
     <AuthGuard>
-      <Dashboard
-        events={eventsData.events as AppEvent[]}
-        financials={eventsData.financials}
-      />
+      <Dashboard events={eventsData.events as AppEvent[]} />
     </AuthGuard>
   );
 }
