@@ -107,23 +107,23 @@ export function AdminPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#0d0d0d" }}>
       <NavBar />
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mx-auto max-w-5xl px-4 py-3 sm:px-5 sm:py-4 lg:px-8 lg:py-6">
 
         {/* Header */}
-        <div style={{ marginBottom: 32, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-6 sm:mb-8">
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "white" }}>Painel Administrativo</h1>
-            <p style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
+            <h1 className="text-lg sm:text-2xl" style={{ fontWeight: 700, color: "white" }}>Painel Administrativo</h1>
+            <p className="text-xs sm:text-[13px] mt-1" style={{ color: "#6b7280" }}>
               Gerencie os eventos do Circuito Nacional Jurídico Agro 2026
             </p>
           </div>
           <button
             onClick={() => { setShowAddForm((v) => !v); setEditingId(null); }}
+            className="flex items-center justify-center gap-1.5 w-full sm:w-auto text-[13px]"
             style={{
-              display: "flex", alignItems: "center", gap: 6,
               borderRadius: 10, background: "#22c55e", color: "white",
-              fontWeight: 700, padding: "10px 20px", fontSize: 13,
-              border: "none", cursor: "pointer",
+              fontWeight: 700, padding: "10px 20px",
+              border: "none", cursor: "pointer", minHeight: 44,
             }}
           >
             {showAddForm ? (
@@ -183,15 +183,14 @@ export function AdminPage() {
           {!loading && events.map((event) => (
             <div key={event.id} style={{ marginBottom: 12, borderRadius: 14, border: "1px solid #252525", background: "#161616", overflow: "hidden" }}>
 
-              {/* Row principal */}
-              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 16 }}>
+              {/* ── Desktop row (md+) ── */}
+              <div className="hidden md:flex items-center gap-3 p-4">
                 <StateFlagSVG
                   state={event.state} size={28}
                   bandeira_tipo={event.bandeira_tipo}
                   bandeira_url={event.bandeira_url}
                   bandeira_custom={event.bandeira_custom}
                 />
-
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
                     <span style={{ fontWeight: 600, color: "white" }}>{event.city}</span>
@@ -212,16 +211,10 @@ export function AdminPage() {
                     {event.utm_nomenclatura && <span>UTM: {event.utm_nomenclatura}</span>}
                   </div>
                 </div>
-
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                   <button
                     onClick={() => { setEditingId(editingId === event.id ? null : event.id); setShowAddForm(false); }}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 6,
-                      borderRadius: 8, border: "1px solid #252525",
-                      background: "transparent", color: "#6b7280",
-                      padding: "6px 12px", fontSize: 13, fontWeight: 500, cursor: "pointer",
-                    }}
+                    style={{ display: "flex", alignItems: "center", gap: 6, borderRadius: 8, border: "1px solid #252525", background: "transparent", color: "#6b7280", padding: "6px 12px", fontSize: 13, fontWeight: 500, cursor: "pointer" }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#22c55e"; (e.currentTarget as HTMLButtonElement).style.color = "#22c55e"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#252525"; (e.currentTarget as HTMLButtonElement).style.color = "#6b7280"; }}
                   >
@@ -230,12 +223,63 @@ export function AdminPage() {
                   </button>
                   <button
                     onClick={() => setDeleteId(event.id)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 6,
-                      borderRadius: 8, border: "1px solid #252525",
-                      background: "transparent", color: "#6b7280",
-                      padding: "6px 12px", fontSize: 13, fontWeight: 500, cursor: "pointer",
-                    }}
+                    style={{ display: "flex", alignItems: "center", gap: 6, borderRadius: 8, border: "1px solid #252525", background: "transparent", color: "#6b7280", padding: "6px 12px", fontSize: 13, fontWeight: 500, cursor: "pointer" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#ef4444"; (e.currentTarget as HTMLButtonElement).style.color = "#ef4444"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#252525"; (e.currentTarget as HTMLButtonElement).style.color = "#6b7280"; }}
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    Excluir
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Mobile card (< md) ── */}
+              <div className="md:hidden p-3">
+                {/* Linha 1: bandeira + cidade/estado/data | badge */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <StateFlagSVG
+                      state={event.state} size={26}
+                      bandeira_tipo={event.bandeira_tipo}
+                      bandeira_url={event.bandeira_url}
+                      bandeira_custom={event.bandeira_custom}
+                    />
+                    <div>
+                      <p style={{ fontWeight: 600, color: "white", fontSize: 14, lineHeight: 1.2 }}>{event.city}</p>
+                      <p style={{ fontSize: 11, color: "#6b7280" }}>
+                        {event.state} · {new Date(event.date + "T00:00:00").toLocaleDateString("pt-BR")}
+                      </p>
+                    </div>
+                  </div>
+                  <span style={{ borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 600, flexShrink: 0, ...STATUS_BADGE_STYLE[event.status] }}>
+                    {STATUS_LABELS[event.status]}
+                  </span>
+                </div>
+
+                {/* Linha 2: ingressos/capacidade/UTM */}
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 mb-3 text-[11px]" style={{ color: "#4b5563" }}>
+                  <span>Individual: {event.individualTickets}</span>
+                  <span>Duplo: {event.doubleTickets}</span>
+                  <span>Capacidade: {event.capacity}</span>
+                  {event.utm_nomenclatura && <span style={{ fontFamily: "monospace", fontSize: 10 }}>UTM: {event.utm_nomenclatura}</span>}
+                </div>
+
+                {/* Linha 3: botões 50/50 */}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => { setEditingId(editingId === event.id ? null : event.id); setShowAddForm(false); }}
+                    className="flex-1 flex items-center justify-center gap-1.5"
+                    style={{ borderRadius: 8, border: "1px solid #252525", background: "transparent", color: "#6b7280", padding: "9px 0", fontSize: 12, fontWeight: 500, cursor: "pointer", minHeight: 44 }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#22c55e"; (e.currentTarget as HTMLButtonElement).style.color = "#22c55e"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#252525"; (e.currentTarget as HTMLButtonElement).style.color = "#6b7280"; }}
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    {editingId === event.id ? "Fechar" : "Editar"}
+                  </button>
+                  <button
+                    onClick={() => setDeleteId(event.id)}
+                    className="flex-1 flex items-center justify-center gap-1.5"
+                    style={{ borderRadius: 8, border: "1px solid #252525", background: "transparent", color: "#6b7280", padding: "9px 0", fontSize: 12, fontWeight: 500, cursor: "pointer", minHeight: 44 }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#ef4444"; (e.currentTarget as HTMLButtonElement).style.color = "#ef4444"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#252525"; (e.currentTarget as HTMLButtonElement).style.color = "#6b7280"; }}
                   >
@@ -247,7 +291,7 @@ export function AdminPage() {
 
               {/* Formulário de edição inline */}
               {editingId === event.id && editingEvent && (
-                <div style={{ borderTop: "1px solid #252525", background: "#111", padding: 24 }}>
+                <div className="p-4 sm:p-6" style={{ borderTop: "1px solid #252525", background: "#111" }}>
                   <h3 style={{ fontSize: 13, fontWeight: 600, color: "#9ca3af", marginBottom: 16 }}>
                     Editando: {event.city}
                   </h3>

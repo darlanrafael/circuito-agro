@@ -43,19 +43,33 @@ export function EventRow({ event }: { event: AppEvent }) {
     ? { label: "Adiado", bg: "#1f1a0a", color: "#fbbf24", border: "#92400e" }
     : getAutoStatus(occupancy);
 
-  const dateObj      = new Date(event.date + "T00:00:00");
+  const dateObj       = new Date(event.date + "T00:00:00");
   const formattedDate = dateObj.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+  const daysLabel = days === 0 ? "Hoje!" : days > 0 ? `em ${days} dias` : `há ${Math.abs(days)} dias`;
+
+  const badgeEl = (
+    <span style={{
+      background: badge.bg,
+      color: badge.color,
+      border: `1px solid ${badge.border}`,
+      fontSize: 9,
+      fontWeight: 600,
+      padding: "2px 8px",
+      borderRadius: 6,
+      whiteSpace: "nowrap",
+    }}>
+      {badge.label}
+    </span>
+  );
 
   return (
     <div
+      className="p-3 md:p-[14px_18px]"
       style={{
         background: "#161616",
         border: "1px solid #252525",
-        borderRadius: 14,
-        padding: "14px 18px",
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
+        borderRadius: 12,
         marginBottom: 6,
         transition: "border-color 0.2s",
         cursor: "default",
@@ -63,68 +77,90 @@ export function EventRow({ event }: { event: AppEvent }) {
       onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#333"; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#252525"; }}
     >
-      {/* Bandeira */}
-      <div style={{ flexShrink: 0 }}>
-        <StateFlagSVG
-          state={event.state}
-          size={32}
-          bandeira_tipo={event.bandeira_tipo}
-          bandeira_url={event.bandeira_url}
-          bandeira_custom={event.bandeira_custom}
-        />
-      </div>
-
-      {/* Cidade */}
-      <div style={{ minWidth: 160 }}>
-        <p style={{ fontSize: 15, fontWeight: 700, color: "white", lineHeight: 1.2 }}>{event.city}</p>
-        <p style={{ fontSize: 11, color: "#6b7280" }}>{event.state}</p>
-      </div>
-
-      {/* Data */}
-      <div style={{ minWidth: 90, textAlign: "center" }}>
-        <p style={{ fontSize: 12, color: "#6b7280" }}>{formattedDate}</p>
-        <p style={{ fontSize: 10, color: "#4b5563" }}>
-          {days === 0 ? "Hoje!" : days > 0 ? `em ${days} dias` : `há ${Math.abs(days)} dias`}
-        </p>
-      </div>
-
-      {/* Ingressos */}
-      <div style={{ display: "flex", gap: 16, minWidth: 140 }}>
-        <div style={{ textAlign: "center" }}>
-          <p style={{ fontSize: 9, textTransform: "uppercase", color: "#4b5563", letterSpacing: "0.1em" }}>Individual</p>
-          <p style={{ fontSize: 16, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>{event.individualTickets}</p>
+      {/* ── Desktop layout (md+) ── */}
+      <div className="hidden md:flex items-center gap-3.5">
+        <div style={{ flexShrink: 0 }}>
+          <StateFlagSVG state={event.state} size={32} bandeira_tipo={event.bandeira_tipo} bandeira_url={event.bandeira_url} bandeira_custom={event.bandeira_custom} />
         </div>
-        <div style={{ textAlign: "center" }}>
-          <p style={{ fontSize: 9, textTransform: "uppercase", color: "#4b5563", letterSpacing: "0.1em" }}>Duplo</p>
-          <p style={{ fontSize: 16, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>{event.doubleTickets}</p>
+
+        <div style={{ minWidth: 160 }}>
+          <p style={{ fontSize: 15, fontWeight: 700, color: "white", lineHeight: 1.2 }}>{event.city}</p>
+          <p style={{ fontSize: 11, color: "#6b7280" }}>{event.state}</p>
+        </div>
+
+        <div style={{ minWidth: 90, textAlign: "center" }}>
+          <p style={{ fontSize: 12, color: "#6b7280" }}>{formattedDate}</p>
+          <p style={{ fontSize: 10, color: "#4b5563" }}>{daysLabel}</p>
+        </div>
+
+        <div style={{ display: "flex", gap: 16, minWidth: 140 }}>
+          <div style={{ textAlign: "center" }}>
+            <p style={{ fontSize: 9, textTransform: "uppercase", color: "#4b5563", letterSpacing: "0.1em" }}>Individual</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>{event.individualTickets}</p>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <p style={{ fontSize: 9, textTransform: "uppercase", color: "#4b5563", letterSpacing: "0.1em" }}>Duplo</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>{event.doubleTickets}</p>
+          </div>
+        </div>
+
+        <div style={{ flex: 1, minWidth: 130 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <span style={{ fontSize: 10, color: "#4b5563" }}>{totalPeople} / {event.capacity} pessoas</span>
+            <span style={{ fontSize: 10, fontWeight: 600, color: pctColor }}>{pct}%</span>
+          </div>
+          <div style={{ height: 5, background: "#1f1f1f", borderRadius: 3, overflow: "hidden" }}>
+            <div className="progress-bar" style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 3 }} />
+          </div>
+        </div>
+
+        <div style={{ flexShrink: 0 }}>
+          <span style={{
+            background: badge.bg, color: badge.color,
+            border: `1px solid ${badge.border}`,
+            fontSize: 10, fontWeight: 600, padding: "3px 10px",
+            borderRadius: 6, whiteSpace: "nowrap",
+          }}>
+            {badge.label}
+          </span>
         </div>
       </div>
 
-      {/* Barra de capacidade */}
-      <div style={{ flex: 1, minWidth: 130 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-          <span style={{ fontSize: 10, color: "#4b5563" }}>{totalPeople} / {event.capacity} pessoas</span>
-          <span style={{ fontSize: 10, fontWeight: 600, color: pctColor }}>{pct}%</span>
+      {/* ── Mobile layout (< md) ── */}
+      <div className="md:hidden">
+        {/* Linha 1: bandeira + cidade + badge */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <StateFlagSVG state={event.state} size={28} bandeira_tipo={event.bandeira_tipo} bandeira_url={event.bandeira_url} bandeira_custom={event.bandeira_custom} />
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "white", lineHeight: 1.2 }}>{event.city}</p>
+              <p style={{ fontSize: 11, color: "#6b7280" }}>{event.state}</p>
+            </div>
+          </div>
+          {badgeEl}
         </div>
-        <div style={{ height: 5, background: "#1f1f1f", borderRadius: 3, overflow: "hidden" }}>
-          <div className="progress-bar" style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 3 }} />
-        </div>
-      </div>
 
-      {/* Badge */}
-      <div style={{ flexShrink: 0 }}>
-        <span style={{
-          background: badge.bg,
-          color: badge.color,
-          border: `1px solid ${badge.border}`,
-          fontSize: 10,
-          fontWeight: 600,
-          padding: "3px 10px",
-          borderRadius: 6,
-          whiteSpace: "nowrap",
-        }}>
-          {badge.label}
-        </span>
+        {/* Linha 2: data + ingressos */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div>
+            <p style={{ fontSize: 11, color: "#6b7280" }}>{formattedDate}</p>
+            <p style={{ fontSize: 10, color: "#4b5563" }}>{daysLabel}</p>
+          </div>
+          <p style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>
+            IND: {event.individualTickets} · DUP: {event.doubleTickets}
+          </p>
+        </div>
+
+        {/* Linha 3: barra de capacidade */}
+        <div>
+          <div style={{ height: 5, background: "#1f1f1f", borderRadius: 3, overflow: "hidden", marginBottom: 4 }}>
+            <div className="progress-bar" style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 3 }} />
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 10, color: "#4b5563" }}>{totalPeople} / {event.capacity} pessoas</span>
+            <span style={{ fontSize: 10, fontWeight: 600, color: pctColor }}>{pct}%</span>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -16,10 +16,8 @@ const colorMap = {
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    style: "currency", currency: "BRL",
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
   }).format(value);
 }
 
@@ -27,30 +25,22 @@ export function FinancialCard({ title, value, icon, color, subtitle }: Props) {
   const c = colorMap[color];
   return (
     <div
+      className="relative flex flex-col p-3 sm:py-[14px] sm:px-4"
       style={{
         background: "#161616",
         border: "1px solid #252525",
         borderLeft: `3px solid ${c.border}`,
         borderRadius: "0 12px 12px 0",
-        padding: "14px 16px",
-        display: "flex",
-        flexDirection: "column",
         gap: 4,
-        position: "relative",
       }}
     >
       {/* Ícone */}
       <div
+        className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 flex items-center justify-center"
         style={{
-          position: "absolute",
-          top: 12,
-          right: 12,
           background: "#1f1f1f",
           borderRadius: 8,
-          padding: 6,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          padding: 5,
           color: c.border,
         }}
       >
@@ -58,31 +48,35 @@ export function FinancialCard({ title, value, icon, color, subtitle }: Props) {
       </div>
 
       {/* Label */}
-      <p style={{
-        fontSize: 9,
-        fontWeight: 700,
-        letterSpacing: "0.2em",
-        textTransform: "uppercase",
-        color: c.textMuted,
-        paddingRight: 32,
-      }}>
+      <p
+        className="text-[8px] sm:text-[9px] pr-7"
+        style={{
+          fontWeight: 700,
+          letterSpacing: "0.2em",
+          textTransform: "uppercase",
+          color: c.textMuted,
+        }}
+      >
         {title}
       </p>
 
       {/* Valor */}
-      <p style={{
-        fontSize: 20,
-        fontWeight: 700,
-        fontVariantNumeric: "tabular-nums",
-        lineHeight: 1,
-        color: c.text,
-      }}>
+      <p
+        className="text-base sm:text-[20px] leading-none"
+        style={{
+          fontWeight: 700,
+          fontVariantNumeric: "tabular-nums",
+          color: c.text,
+        }}
+      >
         {formatCurrency(value)}
       </p>
 
       {/* Subtítulo */}
       {subtitle && (
-        <p style={{ fontSize: 10, color: "#4b5563" }}>{subtitle}</p>
+        <p className="text-[9px] sm:text-[10px]" style={{ color: "#4b5563" }}>
+          {subtitle}
+        </p>
       )}
     </div>
   );

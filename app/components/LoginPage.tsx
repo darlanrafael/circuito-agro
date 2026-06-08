@@ -53,11 +53,11 @@ export function LoginPage() {
 
         {/* Card */}
         <div
+          className="py-7 px-6 sm:p-10"
           style={{
             background: "#161616",
             border: "1px solid #252525",
             borderRadius: 20,
-            padding: 40,
             boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
           }}
         >
@@ -73,7 +73,7 @@ export function LoginPage() {
           <img
             src="/logo-efagro-regional.png"
             alt="EFAGRO Regional"
-            style={{ width: 200, display: "block", margin: "0 auto 8px" }}
+            className="w-40 sm:w-[200px] block mx-auto mb-2"
           />
 
           {/* Subtítulo */}
