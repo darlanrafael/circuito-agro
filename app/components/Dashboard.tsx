@@ -87,7 +87,10 @@ export function Dashboard({ events }: Props) {
   }, [proximosFiltrados]);
 
   // Base para os cards: respeita o filtro de cidade
-  const filteredEvents = cityFilter === "all" ? events : events.filter((e) => e.city === cityFilter);
+  const filteredEvents = useMemo(
+    () => cityFilter === "all" ? events : events.filter((e) => e.city === cityFilter),
+    [cityFilter, events]
+  );
 
   // Busca vendas sempre (para reembolsos) — aplica data quando filtro ativo
   const fetchSales = useCallback(async () => {
@@ -224,10 +227,10 @@ export function Dashboard({ events }: Props) {
             <FinancialCard title="Faturamento Líquido" value={netRevenue} color="green" subtitle="Valor bruto - taxas da plataforma"
               icon={<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>} />
             {/* Card Reembolsos — mesmo padrão que FinancialCard */}
-            <div className={`rounded-2xl border p-3 shadow-md flex flex-col justify-between transition-all ${
+            <div className={`rounded-2xl border p-3 shadow-sm flex flex-col justify-between transition-all ${
               refundCount > 0
-                ? "bg-red-50 dark:bg-gradient-to-br dark:from-red-950 dark:to-rose-950 border-red-200 dark:border-white/10"
-                : "bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-white/10"
+                ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800/50"
+                : "bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800"
             }`}>
               <div className="flex items-start justify-between">
                 <p className={`text-[9px] font-bold uppercase tracking-widest leading-tight ${refundCount > 0 ? "text-red-700 dark:text-red-400" : "text-gray-400 dark:text-gray-500"}`}>
