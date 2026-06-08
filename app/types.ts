@@ -2,7 +2,7 @@ export type EventStatus = "em_andamento" | "adiado" | "realizado" | "cancelado";
 export type BandeiraTipo = "auto" | "upload" | "url";
 
 export type AppEvent = {
-  id: number;
+  id: string;
   city: string;
   state: string;
   date: string;
@@ -11,7 +11,9 @@ export type AppEvent = {
   capacity: number;
   trafficInvestment: number;
   participantes_final: number;
-  faturamento_final: number;
+  faturamento_bruto: number;
+  faturamento_liquido: number;
+  stateName: string;
   status: EventStatus;
   bandeira_tipo: BandeiraTipo;
   bandeira_url: string;
