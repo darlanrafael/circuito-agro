@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("sales")
-    .select("id, event_id, ticket_type, faturamento_bruto, faturamento_liquido, sale_date")
+    .select("id, event_id, ticket_type, faturamento_bruto, faturamento_liquido, sale_date, status, refunded_at")
     .order("sale_date", { ascending: false });
 
   if (from) query = query.gte("sale_date", from);

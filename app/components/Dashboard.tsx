@@ -22,6 +22,8 @@ type Sale = {
   faturamento_bruto: number;
   faturamento_liquido: number;
   sale_date: string;
+  status: string;
+  refunded_at: string | null;
 };
 
 function getDateRange(filter: DateFilter, from: string, to: string): { from: string; to: string } | null {
@@ -86,16 +88,16 @@ export function Dashboard({ events }: Props) {
   // Base para os cards: respeita o filtro de cidade
   const filteredEvents = cityFilter === "all" ? events : events.filter((e) => e.city === cityFilter);
 
-  // Busca vendas quando filtro de data está ativo
+  // Busca vendas sempre (para reembolsos) — aplica data quando filtro ativo
   const fetchSales = useCallback(async () => {
-    const range = getDateRange(dateFilter, dateFrom, dateTo);
-    if (!range) { setSalesData([]); return; }
-
     setSalesLoading(true);
     try {
+      const range = getDateRange(dateFilter, dateFrom, dateTo);
       const eventIds = filteredEvents.map((e) => e.id).join(",");
-      const params = new URLSearchParams({ from: range.from, to: range.to });
+      const params = new URLSearchParams();
       if (eventIds) params.set("event_ids", eventIds);
+      if (range?.from) params.set("from", range.from);
+      if (range?.to)   params.set("to",   range.to);
       const res = await fetch(`/api/sales?${params}`);
       const data: Sale[] = await res.json();
       setSalesData(Array.isArray(data) ? data : []);
@@ -108,15 +110,21 @@ export function Dashboard({ events }: Props) {
 
   useEffect(() => { fetchSales(); }, [fetchSales]);
 
-  // Decide a fonte dos dados para os cards
+  // Decide a fonte dos dados para os cards de ingressos/faturamento
   const usingSales = dateFilter !== "all" && !(dateFilter === "custom" && (!dateFrom || !dateTo));
 
-  // Métricas de ingressos
+  // Separa approved e refunded
+  const approvedSales  = salesData.filter((s) => s.status !== "refunded");
+  const refundedSales  = salesData.filter((s) => s.status === "refunded");
+  const refundCount    = refundedSales.length;
+  const refundValue    = refundedSales.reduce((s, r) => s + (r.faturamento_bruto || 0), 0);
+
+  // Métricas de ingressos (apenas approved quando usando sales)
   const totalIndividual = usingSales
-    ? salesData.filter((s) => s.ticket_type === "individual").length
+    ? approvedSales.filter((s) => s.ticket_type === "individual").length
     : filteredEvents.reduce((s, e) => s + e.individualTickets, 0);
   const totalDouble = usingSales
-    ? salesData.filter((s) => s.ticket_type === "duplo").length
+    ? approvedSales.filter((s) => s.ticket_type === "duplo").length
     : filteredEvents.reduce((s, e) => s + e.doubleTickets, 0);
 
   const totalPeople = totalIndividual + totalDouble * 2;
@@ -126,10 +134,10 @@ export function Dashboard({ events }: Props) {
   // Métricas financeiras
   const trafficInvestment = filteredEvents.reduce((s, e) => s + e.trafficInvestment, 0);
   const grossRevenue = usingSales
-    ? salesData.reduce((s, sale) => s + (sale.faturamento_bruto || 0), 0)
+    ? approvedSales.reduce((s, sale) => s + (sale.faturamento_bruto || 0), 0)
     : filteredEvents.reduce((s, e) => s + (e.faturamento_bruto > 0 ? e.faturamento_bruto : 0), 0);
   const netRevenue = usingSales
-    ? salesData.reduce((s, sale) => s + (sale.faturamento_liquido || 0), 0)
+    ? approvedSales.reduce((s, sale) => s + (sale.faturamento_liquido || 0), 0)
     : filteredEvents.reduce((s, e) => s + (e.faturamento_liquido > 0 ? e.faturamento_liquido : 0), 0);
   const totalTickets = totalIndividual + totalDouble;
   const averageCPA = totalTickets > 0 ? trafficInvestment / totalTickets : 0;
@@ -229,6 +237,39 @@ export function Dashboard({ events }: Props) {
               icon={<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>} />
           </div>
         </section>
+
+        {/* Card de reembolsos — aparece quando há dados de vendas */}
+        {(refundCount > 0 || salesLoading) && (
+          <section className="mb-6">
+            <div className={`rounded-xl border px-5 py-4 flex flex-wrap items-center gap-x-8 gap-y-3 ${
+              refundCount > 0
+                ? "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
+                : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
+            }`}>
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center flex-shrink-0">
+                  <svg className="h-4 w-4 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  </svg>
+                </div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-400">Reembolsos</span>
+              </div>
+              <div>
+                <p className="text-xs text-red-600/70 dark:text-red-400/70 uppercase tracking-wide">Quantidade</p>
+                <p className="text-2xl font-bold tabular-nums text-red-700 dark:text-red-400">{refundCount}</p>
+              </div>
+              <div>
+                <p className="text-xs text-red-600/70 dark:text-red-400/70 uppercase tracking-wide">Valor reembolsado</p>
+                <p className="text-2xl font-bold tabular-nums text-red-700 dark:text-red-400">
+                  {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(refundValue)}
+                </p>
+              </div>
+              <p className="ml-auto text-xs text-red-500/70 dark:text-red-400/50">
+                {dateFilter === "all" ? "Total histórico" : "No período selecionado"}
+              </p>
+            </div>
+          </section>
+        )}
 
         {/* Seção de eventos */}
         <section>

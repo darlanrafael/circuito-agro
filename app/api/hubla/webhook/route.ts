@@ -104,11 +104,21 @@ export async function POST(req: NextRequest) {
 
   console.log("[Hubla] type:", payload.type);
 
-  // 1. Só processa vendas aprovadas
-  if (payload.type !== "invoice.payment_succeeded") {
-    console.log("[Hubla] Ignorado — type não é invoice.payment_succeeded");
-    return NextResponse.json({ received: true, action: "skipped", type: payload.type });
+  // Despacha por tipo de evento
+  if (payload.type === "invoice.payment_succeeded") {
+    return handlePayment(payload);
   }
+  if (payload.type === "invoice.refund_succeeded") {
+    return handleRefund(payload);
+  }
+
+  console.log("[Hubla] Ignorado — type não mapeado:", payload.type);
+  return NextResponse.json({ received: true, action: "skipped", type: payload.type });
+}
+
+// ─── Handler de venda aprovada ────────────────────────────────────────────────
+
+async function handlePayment(payload: HublaPayload) {
 
   // 2. Extrai nome da oferta
   const offerName = payload.event?.products?.[0]?.offers?.[0]?.name ?? "";
@@ -200,5 +210,87 @@ export async function POST(req: NextRequest) {
     ticket_type: ticketIsDouble ? "double" : "individual",
     gross: grossAmount,
     net: netAmount,
+  });
+}
+
+// ─── Handler de reembolso ─────────────────────────────────────────────────────
+
+async function handleRefund(payload: HublaPayload) {
+  const invoiceId = payload.event?.invoice?.id;
+  console.log("[Hubla Refund] invoice id:", invoiceId);
+
+  if (!invoiceId) {
+    console.warn("[Hubla Refund] invoice.id não encontrado");
+    return NextResponse.json({ received: true, action: "skipped_no_invoice_id" });
+  }
+
+  // 1. Busca a venda original na tabela sales
+  const { data: sale, error: saleError } = await supabase
+    .from("sales")
+    .select("id, event_id, ticket_type, faturamento_bruto, faturamento_liquido")
+    .eq("id", invoiceId)
+    .single();
+
+  if (saleError || !sale) {
+    console.warn("[Hubla Refund] Venda não encontrada para id:", invoiceId, saleError);
+    return NextResponse.json({ received: true, action: "skipped_sale_not_found" });
+  }
+  console.log("[Hubla Refund] Venda encontrada:", sale);
+
+  // 2. Busca o evento
+  const { data: event, error: eventError } = await supabase
+    .from("events")
+    .select("id, city, individualTickets, doubleTickets, faturamento_bruto, faturamento_liquido")
+    .eq("id", sale.event_id)
+    .single();
+
+  if (eventError || !event) {
+    console.warn("[Hubla Refund] Evento não encontrado:", sale.event_id);
+    return NextResponse.json({ received: true, action: "skipped_event_not_found" });
+  }
+  console.log("[Hubla Refund] Evento:", event.city);
+
+  // 3. Decrementa os totais no evento
+  const isDouble = sale.ticket_type === "duplo";
+  const eventUpdates = {
+    individualTickets: Math.max(0, event.individualTickets - (isDouble ? 0 : 1)),
+    doubleTickets:     Math.max(0, event.doubleTickets     - (isDouble ? 1 : 0)),
+    faturamento_bruto:   parseFloat(Math.max(0, event.faturamento_bruto   - sale.faturamento_bruto).toFixed(2)),
+    faturamento_liquido: parseFloat(Math.max(0, event.faturamento_liquido - sale.faturamento_liquido).toFixed(2)),
+  };
+
+  console.log("[Hubla Refund] Atualizando evento →", eventUpdates);
+
+  const { error: updateError } = await supabase
+    .from("events")
+    .update(eventUpdates)
+    .eq("id", event.id);
+
+  if (updateError) {
+    console.error("[Hubla Refund] Erro ao atualizar evento:", updateError);
+    return NextResponse.json({ received: true, action: "db_error", error: updateError.message });
+  }
+
+  // 4. Marca a venda como reembolsada
+  const { error: refundError } = await supabase
+    .from("sales")
+    .update({ status: "refunded", refunded_at: new Date().toISOString() })
+    .eq("id", invoiceId);
+
+  if (refundError) {
+    console.error("[Hubla Refund] Erro ao atualizar venda:", refundError);
+  } else {
+    console.log("[Hubla Refund] ✅ Venda marcada como reembolsada");
+  }
+
+  console.log("════════════════════════════════════════");
+
+  return NextResponse.json({
+    received: true,
+    action: "refunded",
+    event: event.city,
+    ticket_type: sale.ticket_type,
+    refunded_bruto: sale.faturamento_bruto,
+    refunded_liquido: sale.faturamento_liquido,
   });
 }
