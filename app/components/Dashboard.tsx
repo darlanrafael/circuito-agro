@@ -13,7 +13,7 @@ type Props = {
 };
 
 type Tab = "proximos" | "realizados";
-type DateFilter = "all" | "today" | "7days" | "month" | "custom";
+type DateFilter = "all" | "today" | "yesterday" | "7days" | "month" | "custom";
 
 type Sale = {
   id: string;
@@ -31,9 +31,10 @@ function getDateRange(filter: DateFilter, from: string, to: string): { from: str
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
   const endOfDay   = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).toISOString();
 
-  if (filter === "today")  return { from: startOfDay(now), to: endOfDay(now) };
-  if (filter === "7days")  { const d = new Date(now); d.setDate(d.getDate() - 6); return { from: startOfDay(d), to: endOfDay(now) }; }
-  if (filter === "month")  return { from: new Date(now.getFullYear(), now.getMonth(), 1).toISOString(), to: endOfDay(now) };
+  if (filter === "today")     return { from: startOfDay(now), to: endOfDay(now) };
+  if (filter === "yesterday") { const d = new Date(now); d.setDate(d.getDate() - 1); return { from: startOfDay(d), to: endOfDay(d) }; }
+  if (filter === "7days")     { const d = new Date(now); d.setDate(d.getDate() - 6); return { from: startOfDay(d), to: endOfDay(now) }; }
+  if (filter === "month")     return { from: new Date(now.getFullYear(), now.getMonth(), 1).toISOString(), to: endOfDay(now) };
   if (filter === "custom" && from && to) return { from: new Date(from).toISOString(), to: endOfDay(new Date(to)) };
   return null;
 }
@@ -57,7 +58,7 @@ function isRealizadoTab(ev: AppEvent): boolean {
 export function Dashboard({ events }: Props) {
   const [tab, setTab] = useState<Tab>("proximos");
   const [cityFilter, setCityFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo]   = useState("");
   const [salesData, setSalesData] = useState<Sale[]>([]);
@@ -180,7 +181,7 @@ export function Dashboard({ events }: Props) {
         <section className="mb-6">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400 mr-1">Período:</span>
-            {([ ["all", "Todos"], ["today", "Hoje"], ["7days", "7 dias"], ["month", "Este mês"], ["custom", "Personalizado"] ] as [DateFilter, string][]).map(([id, label]) => (
+            {([ ["today", "Hoje"], ["yesterday", "Ontem"], ["7days", "Últimos 7 dias"], ["month", "Este mês"], ["custom", "Personalizado"] ] as [DateFilter, string][]).map(([id, label]) => (
               <button key={id} onClick={() => setDateFilter(id)}
                 className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                   dateFilter === id
@@ -238,38 +239,40 @@ export function Dashboard({ events }: Props) {
           </div>
         </section>
 
-        {/* Card de reembolsos — aparece quando há dados de vendas */}
-        {(refundCount > 0 || salesLoading) && (
-          <section className="mb-6">
-            <div className={`rounded-xl border px-5 py-4 flex flex-wrap items-center gap-x-8 gap-y-3 ${
-              refundCount > 0
-                ? "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
-                : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
-            }`}>
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center flex-shrink-0">
-                  <svg className="h-4 w-4 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                  </svg>
-                </div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-400">Reembolsos</span>
+        {/* Card de reembolsos — sempre visível */}
+        <section className="mb-6">
+          <div className={`rounded-xl border px-5 py-4 flex flex-wrap items-center gap-x-8 gap-y-3 transition-colors ${
+            refundCount > 0
+              ? "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
+              : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
+          }`}>
+            <div className="flex items-center gap-2">
+              <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                refundCount > 0 ? "bg-red-100 dark:bg-red-900/40" : "bg-gray-200 dark:bg-gray-700"
+              }`}>
+                <svg className={`h-4 w-4 ${refundCount > 0 ? "text-red-600 dark:text-red-400" : "text-gray-400 dark:text-gray-500"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                </svg>
               </div>
-              <div>
-                <p className="text-xs text-red-600/70 dark:text-red-400/70 uppercase tracking-wide">Quantidade</p>
-                <p className="text-2xl font-bold tabular-nums text-red-700 dark:text-red-400">{refundCount}</p>
-              </div>
-              <div>
-                <p className="text-xs text-red-600/70 dark:text-red-400/70 uppercase tracking-wide">Valor reembolsado</p>
-                <p className="text-2xl font-bold tabular-nums text-red-700 dark:text-red-400">
-                  {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(refundValue)}
-                </p>
-              </div>
-              <p className="ml-auto text-xs text-red-500/70 dark:text-red-400/50">
-                {dateFilter === "all" ? "Total histórico" : "No período selecionado"}
+              <span className={`text-xs font-semibold uppercase tracking-wide ${refundCount > 0 ? "text-red-700 dark:text-red-400" : "text-gray-500 dark:text-gray-400"}`}>
+                Reembolsos
+              </span>
+            </div>
+            <div>
+              <p className={`text-xs uppercase tracking-wide ${refundCount > 0 ? "text-red-600/70 dark:text-red-400/70" : "text-gray-400 dark:text-gray-500"}`}>Quantidade</p>
+              <p className={`text-2xl font-bold tabular-nums ${refundCount > 0 ? "text-red-700 dark:text-red-400" : "text-gray-400 dark:text-gray-500"}`}>{refundCount}</p>
+            </div>
+            <div>
+              <p className={`text-xs uppercase tracking-wide ${refundCount > 0 ? "text-red-600/70 dark:text-red-400/70" : "text-gray-400 dark:text-gray-500"}`}>Valor reembolsado</p>
+              <p className={`text-2xl font-bold tabular-nums ${refundCount > 0 ? "text-red-700 dark:text-red-400" : "text-gray-400 dark:text-gray-500"}`}>
+                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(refundValue)}
               </p>
             </div>
-          </section>
-        )}
+            <p className={`ml-auto text-xs ${refundCount > 0 ? "text-red-500/70 dark:text-red-400/50" : "text-gray-400 dark:text-gray-500"}`}>
+              No período selecionado
+            </p>
+          </div>
+        </section>
 
         {/* Seção de eventos */}
         <section>
