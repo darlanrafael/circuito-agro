@@ -52,10 +52,19 @@ type AppEvent = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+function removeAccents(str: string): string {
+  return str
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // remove combining diacritics
+    .replace(/[^A-Z0-9 ]/gi, " ")    // substitui caracteres especiais por espaço
+    .replace(/\s+/g, " ")            // colapsa espaços múltiplos
+    .trim()
+    .toUpperCase();
+}
+
 function isDouble(offerName: string): boolean {
-  return ["duplo", "double", "casal", "par ", "2 pessoas", "dois"].some((t) =>
-    offerName.toLowerCase().includes(t)
-  );
+  const normalized = removeAccents(offerName);
+  return normalized.includes("DUPLO") || normalized.includes("DOUBLE");
 }
 
 async function findEvent(offerName: string): Promise<AppEvent | null> {
@@ -68,20 +77,35 @@ async function findEvent(offerName: string): Promise<AppEvent | null> {
     return null;
   }
 
-  const upper = offerName.toUpperCase();
+  const normalizedOffer = removeAccents(offerName);
+  console.log("[Hubla] Oferta normalizada:", normalizedOffer);
 
-  // 1. Tenta UTM (ex: "CUIABA" dentro de "REGIONAL - CUIABÁ")
-  const byUtm = (events as AppEvent[]).find(
-    (e) => e.utm_nomenclatura && upper.includes(e.utm_nomenclatura.toUpperCase())
-  );
-  if (byUtm) return byUtm;
+  for (const ev of events as AppEvent[]) {
+    // a. Cada palavra do utm_nomenclatura aparece na oferta normalizada
+    if (ev.utm_nomenclatura) {
+      const utmWords = removeAccents(ev.utm_nomenclatura).split(" ").filter(Boolean);
+      if (utmWords.length > 0 && utmWords.every((w) => normalizedOffer.includes(w))) {
+        console.log("[Hubla] Match por UTM:", ev.utm_nomenclatura, "→", ev.city);
+        return ev;
+      }
+    }
+  }
 
-  // 2. Tenta nome da cidade (ex: "Cuiabá")
-  const byCity = (events as AppEvent[]).find(
-    (e) => e.city && upper.includes(e.city.toUpperCase())
-  );
-  if (byCity) return byCity;
+  for (const ev of events as AppEvent[]) {
+    // b. Cada palavra do nome da cidade aparece na oferta normalizada
+    if (ev.city) {
+      const cityWords = removeAccents(ev.city).split(" ").filter(Boolean);
+      if (cityWords.length > 0 && cityWords.every((w) => normalizedOffer.includes(w))) {
+        console.log("[Hubla] Match por cidade:", ev.city);
+        return ev;
+      }
+    }
+  }
 
+  console.warn("[Hubla] Nenhum evento encontrado. Oferta normalizada:", normalizedOffer);
+  console.warn("[Hubla] Eventos disponíveis:", (events as AppEvent[]).map(
+    (e) => `${e.city} (utm: ${e.utm_nomenclatura})`
+  ).join(", "));
   return null;
 }
 
