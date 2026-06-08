@@ -16,14 +16,25 @@ type HublaProduct = {
   offers: HublaOffer[];
 };
 
+type HublaSubscriber = {
+  email?: string;
+  name?: string;
+};
+
 type HublaPayload = {
   type: string;
   event: {
     invoice: {
+      id?: string;
       amount: { totalCents: number };
       receivers: HublaReceiver[];
+      paymentMethod?: string;
+      saleDate?: string;
+      createdAt?: string;
     };
     products: HublaProduct[];
+    subscriber?: HublaSubscriber;
+    buyer?: HublaSubscriber;
   };
 };
 
@@ -146,6 +157,37 @@ export async function POST(req: NextRequest) {
   if (updateError) {
     console.error("[Hubla] Erro no update:", updateError);
     return NextResponse.json({ received: true, action: "db_error", error: updateError.message });
+  }
+
+  // 10. Insere registro na tabela sales
+  const invoiceId = payload.event?.invoice?.id;
+  const subscriber = payload.event?.subscriber ?? payload.event?.buyer;
+  const saleDate =
+    payload.event?.invoice?.saleDate ??
+    payload.event?.invoice?.createdAt ??
+    new Date().toISOString();
+
+  const saleRecord = {
+    id: invoiceId ?? crypto.randomUUID(),
+    event_id: event.id,
+    offer_name: offerName,
+    ticket_type: ticketIsDouble ? "duplo" : "individual",
+    faturamento_bruto: grossAmount,
+    faturamento_liquido: netAmount,
+    payer_email: subscriber?.email ?? null,
+    payer_name: subscriber?.name ?? null,
+    payment_method: payload.event?.invoice?.paymentMethod ?? null,
+    sale_date: saleDate,
+  };
+
+  console.log("[Hubla] Inserindo venda:", saleRecord);
+
+  const { error: saleError } = await supabase.from("sales").insert([saleRecord]);
+  if (saleError) {
+    console.error("[Hubla] Erro ao inserir venda:", saleError);
+    // Não bloqueia: evento já foi atualizado
+  } else {
+    console.log("[Hubla] ✅ Venda registrada na tabela sales");
   }
 
   console.log("[Hubla] ✅ Atualizado com sucesso");

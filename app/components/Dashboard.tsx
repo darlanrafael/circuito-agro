@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { NavBar } from "./NavBar";
 import { FinancialCard } from "./FinancialCard";
 import { IndicatorCard } from "./IndicatorCard";
@@ -13,6 +13,28 @@ type Props = {
 };
 
 type Tab = "proximos" | "realizados";
+type DateFilter = "all" | "today" | "7days" | "month" | "custom";
+
+type Sale = {
+  id: string;
+  event_id: string;
+  ticket_type: "individual" | "duplo";
+  faturamento_bruto: number;
+  faturamento_liquido: number;
+  sale_date: string;
+};
+
+function getDateRange(filter: DateFilter, from: string, to: string): { from: string; to: string } | null {
+  const now = new Date();
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
+  const endOfDay   = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).toISOString();
+
+  if (filter === "today")  return { from: startOfDay(now), to: endOfDay(now) };
+  if (filter === "7days")  { const d = new Date(now); d.setDate(d.getDate() - 6); return { from: startOfDay(d), to: endOfDay(now) }; }
+  if (filter === "month")  return { from: new Date(now.getFullYear(), now.getMonth(), 1).toISOString(), to: endOfDay(now) };
+  if (filter === "custom" && from && to) return { from: new Date(from).toISOString(), to: endOfDay(new Date(to)) };
+  return null;
+}
 
 const MONTHS_PT: Record<number, string> = {
   0: "Janeiro", 1: "Fevereiro", 2: "Março", 3: "Abril",
@@ -33,6 +55,11 @@ function isRealizadoTab(ev: AppEvent): boolean {
 export function Dashboard({ events }: Props) {
   const [tab, setTab] = useState<Tab>("proximos");
   const [cityFilter, setCityFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]   = useState("");
+  const [salesData, setSalesData] = useState<Sale[]>([]);
+  const [salesLoading, setSalesLoading] = useState(false);
 
   const cities = useMemo(
     () => ["all", ...Array.from(new Set(events.map((e) => e.city)))],
@@ -59,16 +86,51 @@ export function Dashboard({ events }: Props) {
   // Base para os cards: respeita o filtro de cidade
   const filteredEvents = cityFilter === "all" ? events : events.filter((e) => e.city === cityFilter);
 
-  const totalIndividual = filteredEvents.reduce((s, e) => s + e.individualTickets, 0);
-  const totalDouble = filteredEvents.reduce((s, e) => s + e.doubleTickets, 0);
+  // Busca vendas quando filtro de data está ativo
+  const fetchSales = useCallback(async () => {
+    const range = getDateRange(dateFilter, dateFrom, dateTo);
+    if (!range) { setSalesData([]); return; }
+
+    setSalesLoading(true);
+    try {
+      const eventIds = filteredEvents.map((e) => e.id).join(",");
+      const params = new URLSearchParams({ from: range.from, to: range.to });
+      if (eventIds) params.set("event_ids", eventIds);
+      const res = await fetch(`/api/sales?${params}`);
+      const data: Sale[] = await res.json();
+      setSalesData(Array.isArray(data) ? data : []);
+    } catch {
+      setSalesData([]);
+    } finally {
+      setSalesLoading(false);
+    }
+  }, [dateFilter, dateFrom, dateTo, filteredEvents]);
+
+  useEffect(() => { fetchSales(); }, [fetchSales]);
+
+  // Decide a fonte dos dados para os cards
+  const usingSales = dateFilter !== "all" && !(dateFilter === "custom" && (!dateFrom || !dateTo));
+
+  // Métricas de ingressos
+  const totalIndividual = usingSales
+    ? salesData.filter((s) => s.ticket_type === "individual").length
+    : filteredEvents.reduce((s, e) => s + e.individualTickets, 0);
+  const totalDouble = usingSales
+    ? salesData.filter((s) => s.ticket_type === "duplo").length
+    : filteredEvents.reduce((s, e) => s + e.doubleTickets, 0);
+
   const totalPeople = totalIndividual + totalDouble * 2;
   const totalCapacity = filteredEvents.length * 350;
   const occupancyPct = totalCapacity > 0 ? Math.round((totalPeople / totalCapacity) * 100) : 0;
 
-  // Métricas financeiras calculadas dos eventos filtrados
+  // Métricas financeiras
   const trafficInvestment = filteredEvents.reduce((s, e) => s + e.trafficInvestment, 0);
-  const grossRevenue = filteredEvents.reduce((s, e) => s + (e.faturamento_bruto > 0 ? e.faturamento_bruto : 0), 0);
-  const netRevenue = filteredEvents.reduce((s, e) => s + (e.faturamento_liquido > 0 ? e.faturamento_liquido : 0), 0);
+  const grossRevenue = usingSales
+    ? salesData.reduce((s, sale) => s + (sale.faturamento_bruto || 0), 0)
+    : filteredEvents.reduce((s, e) => s + (e.faturamento_bruto > 0 ? e.faturamento_bruto : 0), 0);
+  const netRevenue = usingSales
+    ? salesData.reduce((s, sale) => s + (sale.faturamento_liquido || 0), 0)
+    : filteredEvents.reduce((s, e) => s + (e.faturamento_liquido > 0 ? e.faturamento_liquido : 0), 0);
   const totalTickets = totalIndividual + totalDouble;
   const averageCPA = totalTickets > 0 ? trafficInvestment / totalTickets : 0;
   const totalBalance = netRevenue - trafficInvestment;
@@ -105,6 +167,40 @@ export function Dashboard({ events }: Props) {
             <p>Todo o Brasil · Jul–Out 2026</p>
           </div>
         </header>
+
+        {/* Filtro de período */}
+        <section className="mb-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400 mr-1">Período:</span>
+            {([ ["all", "Todos"], ["today", "Hoje"], ["7days", "7 dias"], ["month", "Este mês"], ["custom", "Personalizado"] ] as [DateFilter, string][]).map(([id, label]) => (
+              <button key={id} onClick={() => setDateFilter(id)}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                  dateFilter === id
+                    ? "bg-emerald-600 text-white"
+                    : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 dark:hover:border-emerald-600"
+                }`}>
+                {label}
+              </button>
+            ))}
+            {dateFilter === "custom" && (
+              <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+                  className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                <span className="text-gray-400 text-sm">até</span>
+                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+                  className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+              </div>
+            )}
+            {usingSales && (
+              <span className="ml-auto flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                {salesLoading
+                  ? <><span className="h-3 w-3 border border-emerald-500 border-t-transparent rounded-full animate-spin inline-block" /> Carregando...</>
+                  : <><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>{salesData.length} venda{salesData.length !== 1 ? "s" : ""} no período</>
+                }
+              </span>
+            )}
+          </div>
+        </section>
 
         {/* Cards financeiros */}
         <section className="mb-6">
