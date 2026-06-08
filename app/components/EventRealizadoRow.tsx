@@ -7,8 +7,8 @@ function fmt(value: number) {
 
 export function EventRealizadoRow({ event }: { event: AppEvent }) {
   const pct = Math.min(100, Math.round((event.participantes_final / event.capacity) * 100));
-  const roi = event.trafficInvestment > 0 ? event.faturamento_final / event.trafficInvestment : 0;
-  const hasData = event.participantes_final > 0 || event.faturamento_final > 0;
+  const roi = event.trafficInvestment > 0 ? event.faturamento_bruto / event.trafficInvestment : 0;
+  const hasData = event.participantes_final > 0 || event.faturamento_bruto > 0;
 
   const dateObj = new Date(event.date + "T00:00:00");
   const formattedDate = dateObj.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -62,7 +62,7 @@ export function EventRealizadoRow({ event }: { event: AppEvent }) {
         <div className="flex gap-4 flex-wrap">
           <div>
             <p className="text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wide">Faturamento</p>
-            <p className="text-gray-900 dark:text-white font-semibold text-sm tabular-nums">{hasData ? fmt(event.faturamento_final) : "—"}</p>
+            <p className="text-gray-900 dark:text-white font-semibold text-sm tabular-nums">{hasData ? fmt(event.faturamento_bruto) : "—"}</p>
           </div>
           <div>
             <p className="text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wide">Investimento</p>
