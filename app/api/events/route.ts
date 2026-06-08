@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json()
-    const { id, ...updates } = body
+    const { id, created_at, ...updates } = body
 
     const { data, error } = await supabase
       .from('events')
