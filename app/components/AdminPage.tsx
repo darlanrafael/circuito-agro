@@ -101,8 +101,8 @@ export function AdminPage() {
     }
   }
 
-  const editingEvent = editingId !== null ? events.find((e) => e.id === editingId) : undefined;
-  const deleteEvent = deleteId !== null ? events.find((e) => e.id === deleteId) : undefined;
+  const editingEvent = editingId !== null ? events.find((e) => e.id === String(editingId)) : undefined;
+  const deleteEvent = deleteId !== null ? events.find((e) => e.id === String(deleteId)) : undefined;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
