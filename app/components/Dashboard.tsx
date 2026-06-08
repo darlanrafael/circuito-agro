@@ -223,26 +223,30 @@ export function Dashboard({ events }: Props) {
               icon={<svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
             <FinancialCard title="Faturamento Líquido" value={netRevenue} color="green" subtitle="Valor bruto - taxas da plataforma"
               icon={<svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>} />
-            {/* Card Reembolsos — mesmo padrão visual que FinancialCard */}
-            <div className={`rounded-2xl border p-4 shadow-sm h-full transition-all ${
+            {/* Card Reembolsos — mesmo padrão que FinancialCard */}
+            <div className={`rounded-2xl border p-5 shadow-md min-h-[120px] flex flex-col justify-between transition-all ${
               refundCount > 0
-                ? "bg-red-100 dark:bg-red-950/60 border-red-300 dark:border-red-800/30"
-                : "bg-red-100 dark:bg-red-950/60 border-red-300 dark:border-red-800/30 opacity-60"
+                ? "bg-gradient-to-br from-red-50 to-rose-100 dark:from-red-950 dark:to-rose-950 border-red-200 dark:border-white/10"
+                : "bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-white/10"
             }`}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-wider leading-tight text-red-900 dark:text-white">Reembolsos</p>
-                  <p className="mt-1 text-3xl font-bold tabular-nums leading-tight text-red-900 dark:text-white">{refundCount}</p>
-                  <p className="mt-0.5 text-xs text-red-800/70 dark:text-white/60">
-                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(refundValue)} estornados
-                  </p>
-                </div>
-                <div className="rounded-xl p-2 flex-shrink-0 bg-red-200 dark:bg-red-900/50 text-red-700 dark:text-white">
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <div className="flex items-start justify-between">
+                <p className={`text-[10px] font-bold uppercase tracking-[0.15em] ${refundCount > 0 ? "text-red-700 dark:text-red-400" : "text-gray-400 dark:text-gray-500"}`}>
+                  Reembolsos
+                </p>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ml-2 ${refundCount > 0 ? "bg-red-200 dark:bg-red-900/60 text-red-700 dark:text-red-400" : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500"}`}>
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                     <path d="M3 3v5h5" />
                   </svg>
                 </div>
+              </div>
+              <div>
+                <p className={`text-2xl font-bold tabular-nums leading-none mt-2 ${refundCount > 0 ? "text-red-700 dark:text-red-400" : "text-gray-400 dark:text-gray-500"}`}>
+                  {refundCount}
+                </p>
+                <p className={`text-[11px] opacity-70 mt-1 ${refundCount > 0 ? "text-red-700 dark:text-red-400" : "text-gray-400 dark:text-gray-500"}`}>
+                  {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(refundValue)} estornados
+                </p>
               </div>
             </div>
           </div>

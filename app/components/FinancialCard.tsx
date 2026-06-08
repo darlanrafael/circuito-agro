@@ -8,28 +8,22 @@ type Props = {
 
 const colorMap = {
   green: {
-    bg: "bg-emerald-100 dark:bg-emerald-950/40",
-    border: "border-emerald-300 dark:border-emerald-800",
+    bg: "bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-emerald-950 dark:to-teal-950",
+    border: "border-emerald-200 dark:border-white/10",
+    text: "text-emerald-700 dark:text-emerald-400",
     icon: "bg-emerald-200 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400",
-    value: "text-emerald-900 dark:text-emerald-400",
-    title: "text-emerald-900 dark:text-emerald-300",
-    subtitle: "text-emerald-800/70 dark:text-emerald-500",
   },
   gold: {
-    bg: "bg-amber-100 dark:bg-amber-950/40",
-    border: "border-amber-300 dark:border-amber-800",
+    bg: "bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-950 dark:to-orange-950",
+    border: "border-amber-200 dark:border-white/10",
+    text: "text-amber-700 dark:text-amber-400",
     icon: "bg-amber-200 dark:bg-amber-900/60 text-amber-700 dark:text-amber-400",
-    value: "text-amber-900 dark:text-amber-400",
-    title: "text-amber-900 dark:text-amber-300",
-    subtitle: "text-amber-800/70 dark:text-amber-500",
   },
   blue: {
-    bg: "bg-blue-100 dark:bg-blue-950/40",
-    border: "border-blue-300 dark:border-blue-800",
+    bg: "bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-950",
+    border: "border-blue-200 dark:border-white/10",
+    text: "text-blue-700 dark:text-blue-400",
     icon: "bg-blue-200 dark:bg-blue-900/60 text-blue-700 dark:text-blue-400",
-    value: "text-blue-900 dark:text-blue-400",
-    title: "text-blue-900 dark:text-blue-300",
-    subtitle: "text-blue-800/70 dark:text-blue-500",
   },
 };
 
@@ -45,18 +39,20 @@ function formatCurrency(value: number) {
 export function FinancialCard({ title, value, icon, color, subtitle }: Props) {
   const c = colorMap[color];
   return (
-    <div className={`rounded-2xl border p-4 shadow-sm h-full ${c.bg} ${c.border}`}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className={`text-xs font-semibold uppercase tracking-wider leading-tight ${c.title}`}>{title}</p>
-          <p className={`mt-1 text-3xl font-bold tabular-nums leading-tight ${c.value}`}>
-            {formatCurrency(value)}
-          </p>
-          {subtitle && (
-            <p className={`mt-0.5 text-xs ${c.subtitle}`}>{subtitle}</p>
-          )}
+    <div className={`rounded-2xl border p-5 shadow-md min-h-[120px] flex flex-col justify-between ${c.bg} ${c.border}`}>
+      <div className="flex items-start justify-between">
+        <p className={`text-[10px] font-bold uppercase tracking-[0.15em] ${c.text}`}>{title}</p>
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ml-2 ${c.icon}`}>
+          {icon}
         </div>
-        <div className={`rounded-xl p-2 flex-shrink-0 ${c.icon}`}>{icon}</div>
+      </div>
+      <div>
+        <p className={`text-2xl font-bold tabular-nums leading-none mt-2 ${c.text}`}>
+          {formatCurrency(value)}
+        </p>
+        {subtitle && (
+          <p className={`text-[11px] opacity-70 mt-1 ${c.text}`}>{subtitle}</p>
+        )}
       </div>
     </div>
   );
