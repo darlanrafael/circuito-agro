@@ -154,11 +154,26 @@ async function handlePayment(payload: HublaPayload) {
   }
 
   // 3. Valores financeiros
-  const grossAmount = (payload.event?.invoice?.amount?.totalCents ?? 0) / 100;
-  const sellerReceiver = payload.event?.invoice?.receivers?.find((r) => r.role === "seller");
-  const netAmount = (sellerReceiver?.totalCents ?? 0) / 100;
+  const totalCents = payload.event?.invoice?.amount?.totalCents ?? 0;
+  const grossAmount = totalCents / 100;
+  const receivers = payload.event?.invoice?.receivers ?? [];
 
-  console.log("[Hubla] Bruto:", grossAmount, "| Líquido (seller):", netAmount);
+  console.log("[Hubla] invoice.amount:", JSON.stringify(payload.event?.invoice?.amount));
+  console.log("[Hubla] receivers:", JSON.stringify(receivers));
+
+  const platformReceiver = receivers.find((r) => r.role === "platform");
+  const sellerReceiver   = receivers.find((r) => r.role === "seller");
+  const partnerReceiver  = receivers.find((r) => r.role === "partner");
+
+  const platformCents = platformReceiver?.totalCents ?? 0;
+  const sellerCents   = sellerReceiver?.totalCents   ?? 0;
+  const partnerCents  = partnerReceiver?.totalCents  ?? 0;
+
+  // faturamento_liquido = totalCents menos taxa da plataforma
+  const netAmount = (totalCents - platformCents) / 100;
+
+  console.log("[Hubla] totalCents=%d platform=%d seller=%d partner=%d → netAmount=%d",
+    totalCents, platformCents, sellerCents, partnerCents, netAmount);
 
   // 4. Localiza evento
   const event = await findEvent(offerName);
@@ -306,12 +321,14 @@ async function handleRefund(payload: HublaPayload) {
     return NextResponse.json({ received: true, action: "skipped_no_event", offer: offerName });
   }
 
-  const grossAmount = (payload.event?.invoice?.amount?.totalCents ?? 0) / 100;
-  const sellerReceiver = payload.event?.invoice?.receivers?.find((r) => r.role === "seller");
-  const netAmount = (sellerReceiver?.totalCents ?? 0) / 100;
-  const ticketIsDouble = isDouble(offerName);
+  const refundTotalCents   = payload.event?.invoice?.amount?.totalCents ?? 0;
+  const grossAmount        = refundTotalCents / 100;
+  const refundReceivers    = payload.event?.invoice?.receivers ?? [];
+  const refundPlatformCts  = refundReceivers.find((r) => r.role === "platform")?.totalCents ?? 0;
+  const netAmount          = (refundTotalCents - refundPlatformCts) / 100;
+  const ticketIsDouble     = isDouble(offerName);
 
-  console.log("[Hubla Refund] Fallback → evento:", event.city, "| tipo:", ticketIsDouble ? "duplo" : "individual", "| bruto:", grossAmount);
+  console.log("[Hubla Refund] Fallback → evento:", event.city, "| tipo:", ticketIsDouble ? "duplo" : "individual", "| bruto:", grossAmount, "| líquido:", netAmount);
 
   await decrementEvent(event, ticketIsDouble, grossAmount, netAmount);
 

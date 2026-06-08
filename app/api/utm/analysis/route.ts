@@ -151,6 +151,8 @@ export async function GET(req: NextRequest) {
   }
 
   // ── 6. Cálculos por evento ────────────────────────────────────────────────
+  // aggInvested: soma dos investimentos que batem por evento (usado nas linhas da tabela)
+  // totalInvested na resposta usa metaResult.totalSpend para coincidir com o Dashboard
   let aggInvested = 0, aggRevenue = 0;
   let aggTracked = 0, aggTrackedRev = 0;
   let aggBugged = 0, aggBuggedRev = 0;
@@ -222,12 +224,17 @@ export async function GET(req: NextRequest) {
   const totalTickets = aggTracked + aggBugged + aggUnknown;
   const attrPct = (n: number) => totalTickets > 0 ? Math.round((n / totalTickets) * 100) : 0;
 
+  // Usa o totalSpend da Meta diretamente para coincidir com o Dashboard.
+  // aggInvested (soma por matching de evento) pode ser menor quando há campanhas
+  // REGIONAL que não batem o UTM de nenhum evento específico.
+  const totalInvested = metaResult.totalSpend > 0 ? metaResult.totalSpend : aggInvested;
+
   return NextResponse.json({
-    totalInvested: aggInvested,
+    totalInvested,
     totalRevenue:  aggRevenue,
     totalTickets,
-    roi:        aggInvested > 0 ? aggRevenue / aggInvested : 0,
-    averageCpa: totalTickets > 0 ? aggInvested / totalTickets : 0,
+    roi:        totalInvested > 0 ? aggRevenue / totalInvested : 0,
+    averageCpa: totalTickets > 0 ? totalInvested / totalTickets : 0,
     attribution: {
       tracked:   { count: aggTracked,  revenue: aggTrackedRev, percentage: attrPct(aggTracked) },
       buggedUtm: { count: aggBugged,   revenue: aggBuggedRev,  percentage: attrPct(aggBugged) },
