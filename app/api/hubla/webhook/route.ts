@@ -248,73 +248,117 @@ async function handleRefund(payload: HublaPayload) {
     return NextResponse.json({ received: true, action: "skipped_no_invoice_id" });
   }
 
-  // 1. Busca a venda original na tabela sales
-  const { data: sale, error: saleError } = await supabase
+  // 1. Tenta buscar a venda original na tabela sales
+  const { data: sale } = await supabase
     .from("sales")
     .select("id, event_id, ticket_type, faturamento_bruto, faturamento_liquido")
     .eq("id", invoiceId)
     .single();
 
-  if (saleError || !sale) {
-    console.warn("[Hubla Refund] Venda não encontrada para id:", invoiceId, saleError);
-    return NextResponse.json({ received: true, action: "skipped_sale_not_found" });
-  }
-  console.log("[Hubla Refund] Venda encontrada:", sale);
+  if (sale) {
+    // ── Fluxo normal: venda encontrada na tabela sales ──────────────────────
+    console.log("[Hubla Refund] Venda encontrada na tabela sales:", sale);
 
-  // 2. Busca o evento
-  const { data: event, error: eventError } = await supabase
-    .from("events")
-    .select("id, city, individualTickets, doubleTickets, faturamento_bruto, faturamento_liquido")
-    .eq("id", sale.event_id)
-    .single();
+    const { data: event, error: eventError } = await supabase
+      .from("events")
+      .select("id, city, individualTickets, doubleTickets, faturamento_bruto, faturamento_liquido")
+      .eq("id", sale.event_id)
+      .single();
 
-  if (eventError || !event) {
-    console.warn("[Hubla Refund] Evento não encontrado:", sale.event_id);
-    return NextResponse.json({ received: true, action: "skipped_event_not_found" });
-  }
-  console.log("[Hubla Refund] Evento:", event.city);
+    if (eventError || !event) {
+      console.warn("[Hubla Refund] Evento não encontrado:", sale.event_id);
+      return NextResponse.json({ received: true, action: "skipped_event_not_found" });
+    }
 
-  // 3. Decrementa os totais no evento
-  const isDouble = sale.ticket_type === "duplo";
-  const eventUpdates = {
-    individualTickets: Math.max(0, event.individualTickets - (isDouble ? 0 : 1)),
-    doubleTickets:     Math.max(0, event.doubleTickets     - (isDouble ? 1 : 0)),
-    faturamento_bruto:   parseFloat(Math.max(0, event.faturamento_bruto   - sale.faturamento_bruto).toFixed(2)),
-    faturamento_liquido: parseFloat(Math.max(0, event.faturamento_liquido - sale.faturamento_liquido).toFixed(2)),
-  };
+    const ticketIsDouble = sale.ticket_type === "duplo";
+    await decrementEvent(event, ticketIsDouble, sale.faturamento_bruto, sale.faturamento_liquido);
 
-  console.log("[Hubla Refund] Atualizando evento →", eventUpdates);
+    const { error: refundError } = await supabase
+      .from("sales")
+      .update({ status: "refunded", refunded_at: new Date().toISOString() })
+      .eq("id", invoiceId);
 
-  const { error: updateError } = await supabase
-    .from("events")
-    .update(eventUpdates)
-    .eq("id", event.id);
+    if (refundError) console.error("[Hubla Refund] Erro ao marcar venda:", refundError);
+    else console.log("[Hubla Refund] ✅ Venda marcada como reembolsada");
 
-  if (updateError) {
-    console.error("[Hubla Refund] Erro ao atualizar evento:", updateError);
-    return NextResponse.json({ received: true, action: "db_error", error: updateError.message });
+    console.log("════════════════════════════════════════");
+    return NextResponse.json({
+      received: true, action: "refunded", source: "sales_table",
+      event: event.city, ticket_type: sale.ticket_type,
+      refunded_bruto: sale.faturamento_bruto, refunded_liquido: sale.faturamento_liquido,
+    });
   }
 
-  // 4. Marca a venda como reembolsada
-  const { error: refundError } = await supabase
-    .from("sales")
-    .update({ status: "refunded", refunded_at: new Date().toISOString() })
-    .eq("id", invoiceId);
+  // ── Fallback: venda não está na tabela sales (compra anterior ao sistema) ──
+  console.log("[Hubla Refund] Venda não encontrada na tabela sales — usando payload");
 
-  if (refundError) {
-    console.error("[Hubla Refund] Erro ao atualizar venda:", refundError);
-  } else {
-    console.log("[Hubla Refund] ✅ Venda marcada como reembolsada");
+  const offerName = payload.event?.products?.[0]?.offers?.[0]?.name ?? "";
+  console.log("[Hubla Refund] Oferta do payload:", offerName);
+
+  if (!offerName) {
+    console.warn("[Hubla Refund] Nome da oferta não encontrado no payload");
+    return NextResponse.json({ received: true, action: "skipped_no_offer" });
   }
+
+  const event = await findEvent(offerName);
+  if (!event) {
+    console.warn("[Hubla Refund] Evento não encontrado para oferta:", offerName);
+    return NextResponse.json({ received: true, action: "skipped_no_event", offer: offerName });
+  }
+
+  const grossAmount = (payload.event?.invoice?.amount?.totalCents ?? 0) / 100;
+  const sellerReceiver = payload.event?.invoice?.receivers?.find((r) => r.role === "seller");
+  const netAmount = (sellerReceiver?.totalCents ?? 0) / 100;
+  const ticketIsDouble = isDouble(offerName);
+
+  console.log("[Hubla Refund] Fallback → evento:", event.city, "| tipo:", ticketIsDouble ? "duplo" : "individual", "| bruto:", grossAmount);
+
+  await decrementEvent(event, ticketIsDouble, grossAmount, netAmount);
+
+  // Insere registro na tabela sales com status refunded diretamente
+  const subscriber = payload.event?.subscriber ?? payload.event?.buyer;
+  const saleDate = payload.event?.invoice?.saleDate ?? payload.event?.invoice?.createdAt ?? new Date().toISOString();
+  const { error: insertError } = await supabase.from("sales").insert([{
+    id: invoiceId,
+    event_id: event.id,
+    offer_name: offerName,
+    ticket_type: ticketIsDouble ? "duplo" : "individual",
+    faturamento_bruto: grossAmount,
+    faturamento_liquido: netAmount,
+    payer_email: subscriber?.email ?? null,
+    payer_name: subscriber?.name ?? null,
+    payment_method: payload.event?.invoice?.paymentMethod ?? null,
+    sale_date: saleDate,
+    status: "refunded",
+    refunded_at: new Date().toISOString(),
+  }]);
+
+  if (insertError) console.error("[Hubla Refund] Erro ao inserir venda reembolsada:", insertError);
+  else console.log("[Hubla Refund] ✅ Venda reembolsada inserida na tabela sales");
 
   console.log("════════════════════════════════════════");
-
   return NextResponse.json({
-    received: true,
-    action: "refunded",
-    event: event.city,
-    ticket_type: sale.ticket_type,
-    refunded_bruto: sale.faturamento_bruto,
-    refunded_liquido: sale.faturamento_liquido,
+    received: true, action: "refunded", source: "payload_fallback",
+    event: event.city, ticket_type: ticketIsDouble ? "duplo" : "individual",
+    refunded_bruto: grossAmount, refunded_liquido: netAmount,
   });
+}
+
+// ─── Decrementa totais no evento ─────────────────────────────────────────────
+
+async function decrementEvent(
+  event: { id: string; individualTickets: number; doubleTickets: number; faturamento_bruto: number; faturamento_liquido: number },
+  ticketIsDouble: boolean,
+  bruto: number,
+  liquido: number,
+) {
+  const updates = {
+    individualTickets: Math.max(0, event.individualTickets - (ticketIsDouble ? 0 : 1)),
+    doubleTickets:     Math.max(0, event.doubleTickets     - (ticketIsDouble ? 1 : 0)),
+    faturamento_bruto:   parseFloat(Math.max(0, event.faturamento_bruto   - bruto).toFixed(2)),
+    faturamento_liquido: parseFloat(Math.max(0, event.faturamento_liquido - liquido).toFixed(2)),
+  };
+  console.log("[Hubla Refund] Decrementando evento", event.id, "→", updates);
+  const { error } = await supabase.from("events").update(updates).eq("id", event.id);
+  if (error) console.error("[Hubla Refund] Erro ao decrementar evento:", error);
 }
