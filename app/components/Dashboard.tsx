@@ -92,14 +92,19 @@ export function Dashboard({ events }: Props) {
     [cityFilter, events]
   );
 
+  // String primitiva de IDs — evita instabilidade de referência de array no useCallback
+  const filteredEventIds = useMemo(
+    () => filteredEvents.map((e) => e.id).join(","),
+    [filteredEvents]
+  );
+
   // Busca vendas sempre (para reembolsos) — aplica data quando filtro ativo
   const fetchSales = useCallback(async () => {
     setSalesLoading(true);
     try {
       const range = getDateRange(dateFilter, dateFrom, dateTo);
-      const eventIds = filteredEvents.map((e) => e.id).join(",");
       const params = new URLSearchParams();
-      if (eventIds) params.set("event_ids", eventIds);
+      if (filteredEventIds) params.set("event_ids", filteredEventIds);
       if (range?.from) params.set("from", range.from);
       if (range?.to)   params.set("to",   range.to);
       const res = await fetch(`/api/sales?${params}`);
@@ -110,7 +115,7 @@ export function Dashboard({ events }: Props) {
     } finally {
       setSalesLoading(false);
     }
-  }, [dateFilter, dateFrom, dateTo, filteredEvents]);
+  }, [dateFilter, dateFrom, dateTo, filteredEventIds]);
 
   useEffect(() => { fetchSales(); }, [fetchSales]);
 
