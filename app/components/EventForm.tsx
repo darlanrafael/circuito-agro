@@ -80,6 +80,14 @@ const EMPTY: FormData = {
   utm_nomenclatura: "",
 };
 
+// Formata número para exibição BR: 10000.32 → "10.000,32"
+function formatBR(value: number): string {
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 // Aceita "1.500,50" (BR) ou "1500.50" (US) e retorna número
 function parseCurrency(raw: string): number {
   const s = raw.trim().replace(/\s/g, "");
@@ -102,7 +110,7 @@ function fileToBase64(file: File): Promise<string> {
 export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
   const [form, setForm] = useState<FormData>({ ...EMPTY, ...initialData });
   const [rawFaturamento, setRawFaturamento] = useState<string>(
-    initialData?.faturamento_bruto ? String(initialData.faturamento_bruto) : ""
+    initialData?.faturamento_bruto ? formatBR(initialData.faturamento_bruto) : ""
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -112,7 +120,7 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
   useEffect(() => {
     if (initialData) {
       setForm({ ...EMPTY, ...initialData });
-      setRawFaturamento(initialData.faturamento_bruto ? String(initialData.faturamento_bruto) : "");
+      setRawFaturamento(initialData.faturamento_bruto ? formatBR(initialData.faturamento_bruto) : "");
     }
   }, [initialData]);
 
