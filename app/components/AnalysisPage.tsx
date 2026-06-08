@@ -37,6 +37,15 @@ type ApiResponse = {
   campaigns: ApiCampaign[];
 };
 
+type DateFilter = "today" | "yesterday" | "7days" | "month" | "custom";
+
+const DATE_PRESETS: Record<Exclude<DateFilter, "custom">, string> = {
+  today:     "today",
+  yesterday: "yesterday",
+  "7days":   "last_7d",
+  month:     "this_month",
+};
+
 // ── Filtros rápidos ────────────────────────────────────────────────────────────
 
 const QUICK_FILTERS = [
@@ -71,18 +80,27 @@ function fmtDec(v: number) {
 
 export function AnalysisPage() {
   const [inputValue, setInputValue]   = useState("REGIONAL");
-  const [selectedCity, setSelectedCity] = useState("");   // "" = todas
+  const [selectedCity, setSelectedCity] = useState("");
+  const [dateFilter, setDateFilter]   = useState<DateFilter>("month");
+  const [dateFrom, setDateFrom]       = useState("");
+  const [dateTo, setDateTo]           = useState("");
   const [data, setData]               = useState<ApiResponse | null>(null);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState<string | null>(null);
 
   // ── Fetch ────────────────────────────────────────────────────────────────
-  const fetchData = useCallback(async (city: string) => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ date_preset: "this_month" });
-      if (city) params.set("city", city);
+      const params = new URLSearchParams();
+      if (selectedCity) params.set("city", selectedCity);
+      if (dateFilter === "custom") {
+        if (dateFrom) params.set("from", dateFrom);
+        if (dateTo)   params.set("to", dateTo);
+      } else {
+        params.set("date_preset", DATE_PRESETS[dateFilter]);
+      }
       const res = await fetch(`/api/utm/analysis?${params}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: ApiResponse = await res.json();
@@ -92,9 +110,9 @@ export function AnalysisPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedCity, dateFilter, dateFrom, dateTo]);
 
-  useEffect(() => { fetchData(selectedCity); }, [selectedCity, fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   // ── Aplicar filtro ────────────────────────────────────────────────────────
   function applyFilter(value: string) {
@@ -103,6 +121,14 @@ export function AnalysisPage() {
     setInputValue(city || "REGIONAL");
     setSelectedCity(city);
   }
+
+  const DATE_FILTER_LABELS: Record<DateFilter, string> = {
+    today:     "Hoje",
+    yesterday: "Ontem",
+    "7days":   "Últimos 7 dias",
+    month:     "Este mês",
+    custom:    "Personalizado",
+  };
 
   const campaigns = data?.campaigns ?? [];
   const attribution = data?.attribution;
@@ -125,6 +151,45 @@ export function AnalysisPage() {
             Rastreamento de origem de vendas por parâmetros UTM das campanhas de tráfego pago
           </p>
         </header>
+
+        {/* Filtro de período */}
+        <section className="mb-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="inline-flex bg-gray-800 rounded-xl p-1 gap-0.5">
+              {(["today", "yesterday", "7days", "month", "custom"] as const).map((key) => (
+                <button
+                  key={key}
+                  onClick={() => setDateFilter(key)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap ${
+                    dateFilter === key
+                      ? "bg-white text-gray-900 shadow"
+                      : "text-gray-400 hover:text-gray-200"
+                  }`}
+                >
+                  {DATE_FILTER_LABELS[key]}
+                </button>
+              ))}
+            </div>
+
+            {dateFilter === "custom" && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="rounded-lg border border-[#E2E8F0] dark:border-slate-600 bg-white dark:bg-slate-800 text-[#0F172A] dark:text-slate-100 px-3 py-1.5 text-xs"
+                />
+                <span className="text-xs text-[#64748B] dark:text-slate-400">até</span>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="rounded-lg border border-[#E2E8F0] dark:border-slate-600 bg-white dark:bg-slate-800 text-[#0F172A] dark:text-slate-100 px-3 py-1.5 text-xs"
+                />
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* Filtros */}
         <section className="mb-8 rounded-2xl border border-[#E2E8F0] dark:border-slate-700 bg-white dark:bg-slate-800/50 p-5">

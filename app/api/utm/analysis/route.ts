@@ -121,9 +121,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── 5. Campanhas Meta (todas REGIONAL, sem city filter — match por evento) ─
+  // ── 5. Campanhas Meta filtradas por cidade e período ─────────────────────
   const metaResult = await fetchMetaCampaigns(
-    from && to ? { from, to } : { datePreset }
+    from && to
+      ? { from, to,       city: cityParam || undefined }
+      : { datePreset,     city: cityParam || undefined }
   );
   const metaCampaigns = metaResult.campaigns;
 
