@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
   if (payload.type === "invoice.payment_succeeded") {
     return handlePayment(payload);
   }
-  if (payload.type === "invoice.refund_succeeded") {
+  if (payload.type === "invoice.refund_succeeded" || payload.type === "invoice.refunded") {
     return handleRefund(payload);
   }
 

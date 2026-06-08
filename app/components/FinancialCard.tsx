@@ -39,19 +39,19 @@ function formatCurrency(value: number) {
 export function FinancialCard({ title, value, icon, color, subtitle }: Props) {
   const c = colorMap[color];
   return (
-    <div className={`rounded-2xl border p-5 shadow-md min-h-[120px] flex flex-col justify-between ${c.bg} ${c.border}`}>
+    <div className={`rounded-2xl border p-4 shadow-md min-h-[110px] flex flex-col justify-between ${c.bg} ${c.border}`}>
       <div className="flex items-start justify-between">
-        <p className={`text-[10px] font-bold uppercase tracking-[0.15em] ${c.text}`}>{title}</p>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ml-2 ${c.icon}`}>
+        <p className={`text-[10px] font-bold uppercase tracking-widest leading-tight ${c.text}`}>{title}</p>
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ml-2 ${c.icon}`}>
           {icon}
         </div>
       </div>
       <div>
-        <p className={`text-2xl font-bold tabular-nums leading-none mt-2 ${c.text}`}>
+        <p className={`text-xl font-bold tabular-nums leading-none mt-2 ${c.text}`}>
           {formatCurrency(value)}
         </p>
         {subtitle && (
-          <p className={`text-[11px] opacity-70 mt-1 ${c.text}`}>{subtitle}</p>
+          <p className={`text-[11px] opacity-70 mt-0.5 ${c.text}`}>{subtitle}</p>
         )}
       </div>
     </div>
