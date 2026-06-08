@@ -122,12 +122,33 @@ export async function GET(req: NextRequest) {
   }
 
   // ── 5. Campanhas Meta filtradas por cidade e período ─────────────────────
-  const metaResult = await fetchMetaCampaigns(
-    from && to
-      ? { from, to,       city: cityParam || undefined }
-      : { datePreset,     city: cityParam || undefined }
+  const metaOpts = from && to
+    ? { from, to,       city: cityParam || undefined }
+    : { datePreset,     city: cityParam || undefined };
+
+  console.log("[UTM Analysis] Params recebidos: city=%s from=%s to=%s date_preset=%s", cityParam, from, to, datePreset);
+  console.log("[UTM Analysis] Chamando fetchMetaCampaigns com:", JSON.stringify(metaOpts));
+
+  const metaResult = await fetchMetaCampaigns(metaOpts);
+
+  console.log("[UTM Analysis] Meta result: error=%s campaigns=%d totalSpend=%d",
+    metaResult.error ?? "none",
+    metaResult.campaigns.length,
+    metaResult.totalSpend
   );
+
   const metaCampaigns = metaResult.campaigns;
+
+  // Log matching por evento
+  for (const ev of targetEvents) {
+    const normUtm = removeAccents(ev.utm_nomenclatura || "");
+    const matched = metaCampaigns.filter((c) => removeAccents(c.name).includes(normUtm));
+    console.log("[UTM Analysis] Evento %s: normUtm=%s matched=%d campaigns spend=%d",
+      ev.city, normUtm,
+      matched.length,
+      matched.reduce((s, c) => s + c.spend, 0)
+    );
+  }
 
   // ── 6. Cálculos por evento ────────────────────────────────────────────────
   let aggInvested = 0, aggRevenue = 0;

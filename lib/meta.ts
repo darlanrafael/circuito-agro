@@ -48,11 +48,18 @@ export async function fetchMetaCampaigns(opts: FetchOpts): Promise<{
   apiUrl.searchParams.set("limit", "100");
   apiUrl.searchParams.set("access_token", ACCESS_TOKEN);
 
+  // Log URL sem o token para debug
+  const urlForLog = new URL(apiUrl.toString());
+  urlForLog.searchParams.delete("access_token");
+  console.log("[Meta] fetchMetaCampaigns opts:", JSON.stringify(opts));
+  console.log("[Meta] API URL:", urlForLog.toString());
+
   try {
     const res = await fetch(apiUrl.toString(), { cache: "no-store" });
     const data = await res.json();
 
     if (data.error) {
+      console.error("[Meta] API error:", JSON.stringify(data.error));
       return { campaigns: [], totalSpend: 0, error: data.error.message };
     }
 
@@ -67,7 +74,17 @@ export async function fetchMetaCampaigns(opts: FetchOpts): Promise<{
       insights?: { data?: RawInsights[] };
     };
 
-    const campaigns: MetaCampaign[] = (data.data as RawCampaign[] ?? [])
+    const rawCampaigns = data.data as RawCampaign[] ?? [];
+    console.log("[Meta] Raw campaigns total:", rawCampaigns.length);
+    if (rawCampaigns.length > 0) {
+      console.log("[Meta] Sample raw campaign:", JSON.stringify({
+        name: rawCampaigns[0].name,
+        status: rawCampaigns[0].status,
+        insights: rawCampaigns[0].insights,
+      }));
+    }
+
+    const campaigns: MetaCampaign[] = rawCampaigns
       .filter((c) => {
         const name = removeAccents(c.name);
         if (!name.includes("REGIONAL")) return false;
@@ -90,8 +107,11 @@ export async function fetchMetaCampaigns(opts: FetchOpts): Promise<{
       });
 
     const totalSpend = campaigns.reduce((sum, c) => sum + c.spend, 0);
+    console.log("[Meta] After filter (REGIONAL + city):", campaigns.length, "campaigns, totalSpend:", totalSpend);
+    console.log("[Meta] Campaign names:", campaigns.map((c) => c.name));
     return { campaigns, totalSpend };
-  } catch {
+  } catch (err) {
+    console.error("[Meta] Fetch exception:", err);
     return { campaigns: [], totalSpend: 0, error: "Falha ao conectar com a Meta API" };
   }
 }
