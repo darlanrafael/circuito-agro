@@ -179,29 +179,31 @@ export function Dashboard({ events }: Props) {
 
         {/* Filtro de período */}
         <section className="mb-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400 mr-1">Período:</span>
-            {([ ["today", "Hoje"], ["yesterday", "Ontem"], ["7days", "Últimos 7 dias"], ["month", "Este mês"], ["custom", "Personalizado"] ] as [DateFilter, string][]).map(([id, label]) => (
-              <button key={id} onClick={() => setDateFilter(id)}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                  dateFilter === id
-                    ? "bg-emerald-600 text-white"
-                    : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-400 dark:hover:border-emerald-600"
-                }`}>
-                {label}
-              </button>
-            ))}
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Período</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex flex-wrap items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+              {([ ["today", "Hoje"], ["yesterday", "Ontem"], ["7days", "Últimos 7 dias"], ["month", "Este mês"], ["custom", "Personalizado"] ] as [DateFilter, string][]).map(([id, label]) => (
+                <button key={id} onClick={() => setDateFilter(id)}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-all whitespace-nowrap ${
+                    dateFilter === id
+                      ? "bg-white dark:bg-gray-700 text-emerald-700 dark:text-emerald-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10 font-semibold"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
             {dateFilter === "custom" && (
-              <div className="flex items-center gap-2 mt-2 sm:mt-0">
+              <div className="flex items-center gap-2">
                 <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                  className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-                <span className="text-gray-400 text-sm">até</span>
+                  className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-sm" />
+                <span className="text-gray-400 dark:text-gray-500 text-sm font-medium">até</span>
                 <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                  className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-sm" />
               </div>
             )}
             {usingSales && (
-              <span className="ml-auto flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+              <span className="sm:ml-auto flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                 {salesLoading
                   ? <><span className="h-3 w-3 border border-emerald-500 border-t-transparent rounded-full animate-spin inline-block" /> Carregando...</>
                   : <><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>{salesData.length} venda{salesData.length !== 1 ? "s" : ""} no período</>
@@ -239,38 +241,49 @@ export function Dashboard({ events }: Props) {
           </div>
         </section>
 
-        {/* Card de reembolsos — sempre visível */}
-        <section className="mb-6">
-          <div className={`rounded-xl border px-5 py-4 flex flex-wrap items-center gap-x-8 gap-y-3 transition-colors ${
+        {/* Card de reembolsos */}
+        <section className="mb-8">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Reembolsos</h2>
+          <div className={`rounded-2xl border p-6 shadow-sm transition-colors ${
             refundCount > 0
-              ? "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
-              : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
+              ? "bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800"
+              : "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
           }`}>
-            <div className="flex items-center gap-2">
-              <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                refundCount > 0 ? "bg-red-100 dark:bg-red-900/40" : "bg-gray-200 dark:bg-gray-700"
+            <div className="flex items-start justify-between gap-6">
+              <div className="flex gap-8 flex-wrap">
+                <div>
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${refundCount > 0 ? "text-red-900 dark:text-red-300" : "text-gray-500 dark:text-gray-400"}`}>
+                    Quantidade
+                  </p>
+                  <p className={`mt-2 text-3xl font-bold tabular-nums ${refundCount > 0 ? "text-red-800 dark:text-red-400" : "text-gray-400 dark:text-gray-500"}`}>
+                    {refundCount}
+                  </p>
+                  <p className={`mt-1 text-xs ${refundCount > 0 ? "text-red-700/70 dark:text-red-500" : "text-gray-400 dark:text-gray-500"}`}>
+                    {refundCount === 1 ? "reembolso" : "reembolsos"} no período
+                  </p>
+                </div>
+                <div>
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${refundCount > 0 ? "text-red-900 dark:text-red-300" : "text-gray-500 dark:text-gray-400"}`}>
+                    Valor reembolsado
+                  </p>
+                  <p className={`mt-2 text-3xl font-bold tabular-nums ${refundCount > 0 ? "text-red-800 dark:text-red-400" : "text-gray-400 dark:text-gray-500"}`}>
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(refundValue)}
+                  </p>
+                  <p className={`mt-1 text-xs ${refundCount > 0 ? "text-red-700/70 dark:text-red-500" : "text-gray-400 dark:text-gray-500"}`}>
+                    estornados aos compradores
+                  </p>
+                </div>
+              </div>
+              <div className={`rounded-xl p-3 flex-shrink-0 ${
+                refundCount > 0
+                  ? "bg-red-100 dark:bg-red-900/60 text-red-700 dark:text-red-400"
+                  : "bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500"
               }`}>
-                <svg className={`h-4 w-4 ${refundCount > 0 ? "text-red-600 dark:text-red-400" : "text-gray-400 dark:text-gray-500"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                 </svg>
               </div>
-              <span className={`text-xs font-semibold uppercase tracking-wide ${refundCount > 0 ? "text-red-700 dark:text-red-400" : "text-gray-500 dark:text-gray-400"}`}>
-                Reembolsos
-              </span>
             </div>
-            <div>
-              <p className={`text-xs uppercase tracking-wide ${refundCount > 0 ? "text-red-600/70 dark:text-red-400/70" : "text-gray-400 dark:text-gray-500"}`}>Quantidade</p>
-              <p className={`text-2xl font-bold tabular-nums ${refundCount > 0 ? "text-red-700 dark:text-red-400" : "text-gray-400 dark:text-gray-500"}`}>{refundCount}</p>
-            </div>
-            <div>
-              <p className={`text-xs uppercase tracking-wide ${refundCount > 0 ? "text-red-600/70 dark:text-red-400/70" : "text-gray-400 dark:text-gray-500"}`}>Valor reembolsado</p>
-              <p className={`text-2xl font-bold tabular-nums ${refundCount > 0 ? "text-red-700 dark:text-red-400" : "text-gray-400 dark:text-gray-500"}`}>
-                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(refundValue)}
-              </p>
-            </div>
-            <p className={`ml-auto text-xs ${refundCount > 0 ? "text-red-500/70 dark:text-red-400/50" : "text-gray-400 dark:text-gray-500"}`}>
-              No período selecionado
-            </p>
           </div>
         </section>
 
