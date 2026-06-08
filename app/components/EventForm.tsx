@@ -128,7 +128,14 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
     }
     setSubmitting(true);
     try {
-      await onSubmit(form);
+      await onSubmit({
+        ...form,
+        faturamento_bruto: parseFloat(String(form.faturamento_bruto).replace(',', '.')) || 0,
+        individualTickets: Number(form.individualTickets) || 0,
+        doubleTickets: Number(form.doubleTickets) || 0,
+        trafficInvestment: parseFloat(String(form.trafficInvestment).replace(',', '.')) || 0,
+        participantes_final: Number(form.participantes_final) || 0,
+      });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao salvar evento.");
     } finally {
