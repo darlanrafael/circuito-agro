@@ -80,6 +80,16 @@ const EMPTY: FormData = {
   utm_nomenclatura: "",
 };
 
+// Aceita "1.500,50" (BR) ou "1500.50" (US) e retorna número
+function parseCurrency(raw: string): number {
+  const s = raw.trim().replace(/\s/g, "");
+  if (!s) return 0;
+  // Formato BR: vírgula como separador decimal → remove pontos, troca vírgula por ponto
+  if (s.includes(",")) return parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
+  // Formato US ou inteiro puro → remove tudo exceto dígitos e ponto
+  return parseFloat(s.replace(/[^\d.]/g, "")) || 0;
+}
+
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -91,13 +101,19 @@ function fileToBase64(file: File): Promise<string> {
 
 export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
   const [form, setForm] = useState<FormData>({ ...EMPTY, ...initialData });
+  const [rawFaturamento, setRawFaturamento] = useState<string>(
+    initialData?.faturamento_bruto ? String(initialData.faturamento_bruto) : ""
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [uploadError, setUploadError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (initialData) setForm({ ...EMPTY, ...initialData });
+    if (initialData) {
+      setForm({ ...EMPTY, ...initialData });
+      setRawFaturamento(initialData.faturamento_bruto ? String(initialData.faturamento_bruto) : "");
+    }
   }, [initialData]);
 
   function set<K extends keyof FormData>(key: K, value: FormData[K]) {
@@ -130,7 +146,7 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
     }
     setSubmitting(true);
     try {
-      const bruto = parseFloat(String(form.faturamento_bruto).replace(",", ".")) || 0;
+      const bruto = parseCurrency(rawFaturamento);
       await onSubmit({
         ...form,
         faturamento_bruto: bruto,
@@ -212,8 +228,14 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
         </div>
         <div>
           <label className={labelClass}>Faturamento bruto do evento (R$)</label>
-          <input type="text" inputMode="decimal" className={inputClass} value={form.faturamento_bruto === 0 ? "" : form.faturamento_bruto}
-            onChange={(e) => set("faturamento_bruto", parseFloat(e.target.value.replace(",", ".")) || 0)} />
+          <input
+            type="text"
+            inputMode="decimal"
+            className={inputClass}
+            placeholder="Ex: 1.500,50 ou 1500.50"
+            value={rawFaturamento}
+            onChange={(e) => setRawFaturamento(e.target.value)}
+          />
         </div>
       </div>
 
