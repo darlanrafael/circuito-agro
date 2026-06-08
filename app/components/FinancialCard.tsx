@@ -2,29 +2,16 @@ type Props = {
   title: string;
   value: number;
   icon: React.ReactNode;
-  color: "green" | "gold" | "blue";
+  color: "green" | "gold" | "blue" | "red" | "gray";
   subtitle?: string;
 };
 
 const colorMap = {
-  green: {
-    bg: "bg-emerald-50 dark:bg-emerald-950",
-    border: "border-emerald-200 dark:border-emerald-800/50",
-    text: "text-emerald-700 dark:text-emerald-400",
-    icon: "bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400",
-  },
-  gold: {
-    bg: "bg-amber-50 dark:bg-amber-950",
-    border: "border-amber-200 dark:border-amber-800/50",
-    text: "text-amber-700 dark:text-amber-400",
-    icon: "bg-amber-100 dark:bg-amber-900/60 text-amber-600 dark:text-amber-400",
-  },
-  blue: {
-    bg: "bg-blue-50 dark:bg-blue-950",
-    border: "border-blue-200 dark:border-blue-800/50",
-    text: "text-blue-700 dark:text-blue-400",
-    icon: "bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400",
-  },
+  green: { border: "#22c55e", text: "#22c55e",  textMuted: "#15803d" },
+  gold:  { border: "#eab308", text: "#eab308",  textMuted: "#a16207" },
+  blue:  { border: "#3b82f6", text: "#60a5fa",  textMuted: "#1d4ed8" },
+  red:   { border: "#ef4444", text: "#ef4444",  textMuted: "#991b1b" },
+  gray:  { border: "#374151", text: "#6b7280",  textMuted: "#374151" },
 };
 
 function formatCurrency(value: number) {
@@ -39,21 +26,64 @@ function formatCurrency(value: number) {
 export function FinancialCard({ title, value, icon, color, subtitle }: Props) {
   const c = colorMap[color];
   return (
-    <div className={`rounded-2xl border p-3 shadow-sm flex flex-col justify-between ${c.bg} ${c.border}`}>
-      <div className="flex items-start justify-between">
-        <p className={`text-[9px] font-bold uppercase tracking-widest leading-tight ${c.text}`}>{title}</p>
-        <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ml-2 ${c.icon}`}>
-          {icon}
-        </div>
+    <div
+      style={{
+        background: "#161616",
+        border: "1px solid #252525",
+        borderLeft: `3px solid ${c.border}`,
+        borderRadius: "0 12px 12px 0",
+        padding: "14px 16px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+        position: "relative",
+      }}
+    >
+      {/* Ícone */}
+      <div
+        style={{
+          position: "absolute",
+          top: 12,
+          right: 12,
+          background: "#1f1f1f",
+          borderRadius: 8,
+          padding: 6,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: c.border,
+        }}
+      >
+        {icon}
       </div>
-      <div className="mt-2">
-        <p className={`text-lg font-bold tabular-nums leading-none ${c.text}`}>
-          {formatCurrency(value)}
-        </p>
-        {subtitle && (
-          <p className={`text-[10px] opacity-70 mt-0.5 ${c.text}`}>{subtitle}</p>
-        )}
-      </div>
+
+      {/* Label */}
+      <p style={{
+        fontSize: 9,
+        fontWeight: 700,
+        letterSpacing: "0.2em",
+        textTransform: "uppercase",
+        color: c.textMuted,
+        paddingRight: 32,
+      }}>
+        {title}
+      </p>
+
+      {/* Valor */}
+      <p style={{
+        fontSize: 20,
+        fontWeight: 700,
+        fontVariantNumeric: "tabular-nums",
+        lineHeight: 1,
+        color: c.text,
+      }}>
+        {formatCurrency(value)}
+      </p>
+
+      {/* Subtítulo */}
+      {subtitle && (
+        <p style={{ fontSize: 10, color: "#4b5563" }}>{subtitle}</p>
+      )}
     </div>
   );
 }

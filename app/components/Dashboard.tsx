@@ -8,9 +8,7 @@ import { EventRow } from "./EventRow";
 import { EventRealizadoRow } from "./EventRealizadoRow";
 import type { AppEvent } from "../types";
 
-type Props = {
-  events: AppEvent[];
-};
+type Props = { events: AppEvent[] };
 
 type Tab = "proximos" | "realizados";
 type DateFilter = "all" | "today" | "yesterday" | "7days" | "month" | "custom";
@@ -27,22 +25,12 @@ type Sale = {
 };
 
 type MetaCampaign = {
-  id: string;
-  name: string;
-  status: string;
-  spend: number;
-  impressions: number;
-  clicks: number;
-  cpc: number;
-  cpm: number;
-  reach: number;
+  id: string; name: string; status: string; spend: number;
+  impressions: number; clicks: number; cpc: number; cpm: number; reach: number;
 };
 
 function getMetaParams(
-  dateFilter: DateFilter,
-  dateFrom: string,
-  dateTo: string,
-  city?: string
+  dateFilter: DateFilter, dateFrom: string, dateTo: string, city?: string
 ): URLSearchParams {
   const p = new URLSearchParams();
   if (dateFilter === "today")         p.set("date_preset", "today");
@@ -50,8 +38,7 @@ function getMetaParams(
   else if (dateFilter === "7days")     p.set("date_preset", "last_7d");
   else if (dateFilter === "month")     p.set("date_preset", "this_month");
   else if (dateFilter === "custom" && dateFrom && dateTo) {
-    p.set("from", dateFrom);
-    p.set("to", dateTo);
+    p.set("from", dateFrom); p.set("to", dateTo);
   } else {
     p.set("date_preset", "last_30d");
   }
@@ -63,7 +50,6 @@ function getDateRange(filter: DateFilter, from: string, to: string): { from: str
   const now = new Date();
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
   const endOfDay   = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).toISOString();
-
   if (filter === "today")     return { from: startOfDay(now), to: endOfDay(now) };
   if (filter === "yesterday") { const d = new Date(now); d.setDate(d.getDate() - 1); return { from: startOfDay(d), to: endOfDay(d) }; }
   if (filter === "7days")     { const d = new Date(now); d.setDate(d.getDate() - 6); return { from: startOfDay(d), to: endOfDay(now) }; }
@@ -89,28 +75,24 @@ function isRealizadoTab(ev: AppEvent): boolean {
 }
 
 export function Dashboard({ events }: Props) {
-  const [tab, setTab] = useState<Tab>("proximos");
+  const [tab, setTab]               = useState<Tab>("proximos");
   const [cityFilter, setCityFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo]   = useState("");
-  const [salesData, setSalesData] = useState<Sale[]>([]);
+  const [dateFrom, setDateFrom]     = useState("");
+  const [dateTo, setDateTo]         = useState("");
+  const [salesData, setSalesData]   = useState<Sale[]>([]);
   const [salesLoading, setSalesLoading] = useState(false);
   const [metaCampaigns, setMetaCampaigns] = useState<MetaCampaign[]>([]);
   const [metaTotalSpend, setMetaTotalSpend] = useState(0);
   const [metaLoading, setMetaLoading] = useState(false);
-  const [metaError, setMetaError] = useState<string | null>(null);
+  const [metaError, setMetaError]   = useState<string | null>(null);
   const [metaConfigured, setMetaConfigured] = useState(true);
 
-  const cities = useMemo(
-    () => ["all", ...Array.from(new Set(events.map((e) => e.city)))],
-    [events]
-  );
+  const cities = useMemo(() => ["all", ...Array.from(new Set(events.map((e) => e.city)))], [events]);
 
-  const proximos = useMemo(() => events.filter((e) => !isRealizadoTab(e)), [events]);
-  const realizados = useMemo(() => events.filter((e) => isRealizadoTab(e)), [events]);
-
-  const proximosFiltrados = cityFilter === "all" ? proximos : proximos.filter((e) => e.city === cityFilter);
+  const proximos         = useMemo(() => events.filter((e) => !isRealizadoTab(e)), [events]);
+  const realizados       = useMemo(() => events.filter((e) => isRealizadoTab(e)), [events]);
+  const proximosFiltrados  = cityFilter === "all" ? proximos : proximos.filter((e) => e.city === cityFilter);
   const realizadosFiltrados = cityFilter === "all" ? realizados : realizados.filter((e) => e.city === cityFilter);
 
   const grouped = useMemo(() => {
@@ -124,27 +106,18 @@ export function Dashboard({ events }: Props) {
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
   }, [proximosFiltrados]);
 
-  // Base para os cards: respeita o filtro de cidade
   const filteredEvents = useMemo(
     () => cityFilter === "all" ? events : events.filter((e) => e.city === cityFilter),
     [cityFilter, events]
   );
 
-  // String primitiva de IDs — evita instabilidade de referência de array no useCallback
-  const filteredEventIds = useMemo(
-    () => filteredEvents.map((e) => e.id).join(","),
-    [filteredEvents]
-  );
+  const filteredEventIds = useMemo(() => filteredEvents.map((e) => e.id).join(","), [filteredEvents]);
 
-  // utm_nomenclatura da cidade selecionada para filtrar campanhas Meta por cidade
   const selectedCityUtm = useMemo(
-    () => cityFilter !== "all" && filteredEvents.length > 0
-      ? (filteredEvents[0].utm_nomenclatura ?? "")
-      : "",
+    () => cityFilter !== "all" && filteredEvents.length > 0 ? (filteredEvents[0].utm_nomenclatura ?? "") : "",
     [cityFilter, filteredEvents]
   );
 
-  // Busca vendas sempre (para reembolsos) — aplica data quando filtro ativo
   const fetchSales = useCallback(async () => {
     setSalesLoading(true);
     try {
@@ -172,14 +145,8 @@ export function Dashboard({ events }: Props) {
       const params = getMetaParams(dateFilter, dateFrom, dateTo, selectedCityUtm || undefined);
       const res = await fetch(`/api/meta/campaigns?${params}`);
       const data = await res.json();
-      if (res.status === 503 && data.error === "not_configured") {
-        setMetaConfigured(false);
-        return;
-      }
-      if (data.error) {
-        setMetaError(data.error);
-        return;
-      }
+      if (res.status === 503 && data.error === "not_configured") { setMetaConfigured(false); return; }
+      if (data.error) { setMetaError(data.error); return; }
       setMetaCampaigns(data.campaigns ?? []);
       setMetaTotalSpend(data.totalSpend ?? 0);
     } catch {
@@ -191,16 +158,13 @@ export function Dashboard({ events }: Props) {
 
   useEffect(() => { fetchMeta(); }, [fetchMeta]);
 
-  // Decide a fonte dos dados para os cards de ingressos/faturamento
   const usingSales = dateFilter !== "all" && !(dateFilter === "custom" && (!dateFrom || !dateTo));
 
-  // Separa approved e refunded
-  const approvedSales  = salesData.filter((s) => s.status !== "refunded");
-  const refundedSales  = salesData.filter((s) => s.status === "refunded");
-  const refundCount    = refundedSales.length;
-  const refundValue    = refundedSales.reduce((s, r) => s + (r.faturamento_bruto || 0), 0);
+  const approvedSales = salesData.filter((s) => s.status !== "refunded");
+  const refundedSales = salesData.filter((s) => s.status === "refunded");
+  const refundCount   = refundedSales.length;
+  const refundValue   = refundedSales.reduce((s, r) => s + (r.faturamento_bruto || 0), 0);
 
-  // Métricas de ingressos (apenas approved quando usando sales)
   const totalIndividual = usingSales
     ? approvedSales.filter((s) => s.ticket_type === "individual").length
     : filteredEvents.reduce((s, e) => s + e.individualTickets, 0);
@@ -208,11 +172,10 @@ export function Dashboard({ events }: Props) {
     ? approvedSales.filter((s) => s.ticket_type === "duplo").length
     : filteredEvents.reduce((s, e) => s + e.doubleTickets, 0);
 
-  const totalPeople = totalIndividual + totalDouble * 2;
-  const totalCapacity = filteredEvents.length * 350;
-  const occupancyPct = totalCapacity > 0 ? Math.round((totalPeople / totalCapacity) * 100) : 0;
+  const totalPeople    = totalIndividual + totalDouble * 2;
+  const totalCapacity  = filteredEvents.length * 350;
+  const occupancyPct   = totalCapacity > 0 ? Math.round((totalPeople / totalCapacity) * 100) : 0;
 
-  // Métricas financeiras
   const trafficInvestment = filteredEvents.reduce((s, e) => s + e.trafficInvestment, 0);
   const grossRevenue = usingSales
     ? approvedSales.reduce((s, sale) => s + (sale.faturamento_bruto || 0), 0)
@@ -222,84 +185,115 @@ export function Dashboard({ events }: Props) {
     : filteredEvents.reduce((s, e) => s + (e.faturamento_liquido > 0 ? e.faturamento_liquido : 0), 0);
   const totalTickets = totalIndividual + totalDouble;
 
-  // Usa o gasto real da Meta quando disponível
-  const metaLoaded = metaConfigured && !metaLoading && !metaError;
+  const metaLoaded         = metaConfigured && !metaLoading && !metaError;
   const effectiveInvestment = metaLoaded ? metaTotalSpend : trafficInvestment;
-  const averageCPA = totalTickets > 0 ? effectiveInvestment / totalTickets : 0;
-  const totalBalance = netRevenue - effectiveInvestment;
+  const averageCPA          = totalTickets > 0 ? effectiveInvestment / totalTickets : 0;
+  const totalBalance        = netRevenue - effectiveInvestment;
 
-  const fmtBRL = (v: number) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
-  const fmtBRL2 = (v: number) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(v);
+  const fmtBRL  = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+  const fmtBRL2 = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(v);
+
+  const sectionLabel: React.CSSProperties = {
+    marginBottom: 10,
+    fontSize: 9,
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: "0.2em",
+    color: "#4b5563",
+  };
+
+  const inputStyle: React.CSSProperties = {
+    borderRadius: 10,
+    border: "1px solid #333",
+    background: "#0d0d0d",
+    color: "white",
+    padding: "6px 12px",
+    fontSize: 13,
+    outline: "none",
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div style={{ minHeight: "100vh", background: "#0d0d0d" }}>
       <NavBar />
       <div className="mx-auto max-w-7xl px-4 py-6 sm:py-8">
 
         {/* Header */}
-        <header className="mb-8 flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="flex items-center gap-4">
-            <div className="h-16 w-16 flex-shrink-0 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 shadow-lg flex items-center justify-center">
-              <svg viewBox="0 0 48 48" className="h-10 w-10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <line x1="24" y1="8" x2="24" y2="40" stroke="#FEDF00" strokeWidth="2.5" strokeLinecap="round"/>
-                <line x1="12" y1="12" x2="36" y2="12" stroke="#FEDF00" strokeWidth="2.5" strokeLinecap="round"/>
-                <path d="M10,14 L8,22 Q14,26 18,22 L16,14" stroke="#FEDF00" strokeWidth="1.8" fill="none" strokeLinejoin="round"/>
-                <path d="M32,14 L30,22 Q36,26 40,22 L38,14" stroke="#FEDF00" strokeWidth="1.8" fill="none" strokeLinejoin="round"/>
-                <path d="M20,34 Q18,30 22,28 Q20,32 24,34 Q22,30 26,28 Q24,32 28,34" stroke="#A3E635" strokeWidth="1.5" fill="none"/>
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">Circuito Nacional</h1>
-              <p className="text-lg sm:text-xl font-semibold text-emerald-700 dark:text-emerald-400">Jurídico Agro 2026</p>
-            </div>
+        <header style={{ marginBottom: 32 }}>
+          <div style={{ height: 3, display: "flex", borderRadius: 2, overflow: "hidden", marginBottom: 20 }}>
+            <div style={{ flex: 1, background: "#22c55e" }} />
+            <div style={{ flex: 1, background: "#eab308" }} />
+            <div style={{ flex: 1, background: "#ef4444" }} />
           </div>
-          <div className="sm:ml-auto text-sm text-gray-500 dark:text-gray-400 sm:text-right">
-            <p className="font-medium text-gray-700 dark:text-gray-300">8 cidades · 8 eventos</p>
-            <p>Todo o Brasil · Jul–Out 2026</p>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <img src="/logo-efagro-regional.png" alt="EFAGRO Regional" style={{ height: 48, flexShrink: 0 }} />
+              <div>
+                <h1 style={{ fontSize: "clamp(20px, 3vw, 28px)", fontWeight: 700, color: "white", lineHeight: 1.2 }}>
+                  Circuito Nacional
+                </h1>
+                <p style={{ fontSize: "clamp(15px, 2vw, 19px)", fontWeight: 600, color: "#22c55e" }}>
+                  Jurídico Agro 2026
+                </p>
+              </div>
+            </div>
+            <div className="sm:ml-auto" style={{ fontSize: 13, color: "#6b7280" }}>
+              <p style={{ fontWeight: 600, color: "#9ca3af" }}>8 cidades · 8 eventos</p>
+              <p>Todo o Brasil · Jul–Out 2026</p>
+            </div>
           </div>
         </header>
 
         {/* Filtro de período */}
-        <section className="mb-6">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Período</h2>
+        <section style={{ marginBottom: 24 }}>
+          <h2 style={sectionLabel}>Período</h2>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex flex-wrap items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
-              {([ ["today", "Hoje"], ["yesterday", "Ontem"], ["7days", "Últimos 7 dias"], ["month", "Este mês"], ["custom", "Personalizado"] ] as [DateFilter, string][]).map(([id, label]) => (
-                <button key={id} onClick={() => setDateFilter(id)}
-                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-all whitespace-nowrap ${
-                    dateFilter === id
-                      ? "bg-white dark:bg-gray-700 text-emerald-700 dark:text-emerald-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10 font-semibold"
-                      : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-                  }`}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 3, background: "#161616", borderRadius: 14, padding: 4, border: "1px solid #1f1f1f" }}>
+              {([
+                ["today",     "Hoje"],
+                ["yesterday", "Ontem"],
+                ["7days",     "Últimos 7 dias"],
+                ["month",     "Este mês"],
+                ["custom",    "Personalizado"],
+              ] as [DateFilter, string][]).map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => setDateFilter(id)}
+                  style={{
+                    borderRadius: 10, padding: "6px 12px", fontSize: 13, whiteSpace: "nowrap",
+                    fontWeight: dateFilter === id ? 700 : 500,
+                    background: dateFilter === id ? "#22c55e" : "transparent",
+                    color: dateFilter === id ? "white" : "#6b7280",
+                    border: "none", cursor: "pointer", transition: "all 0.15s",
+                  }}
+                >
                   {label}
                 </button>
               ))}
             </div>
+
             {dateFilter === "custom" && (
-              <div className="flex items-center gap-2">
-                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                  className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-sm" />
-                <span className="text-gray-400 dark:text-gray-500 text-sm font-medium">até</span>
-                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                  className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-sm" />
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} style={inputStyle} />
+                <span style={{ color: "#4b5563", fontSize: 13 }}>até</span>
+                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} style={inputStyle} />
               </div>
             )}
+
             {usingSales && (
-              <span className="sm:ml-auto flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                {salesLoading
-                  ? <><span className="h-3 w-3 border border-emerald-500 border-t-transparent rounded-full animate-spin inline-block" /> Carregando...</>
-                  : <><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>{salesData.length} venda{salesData.length !== 1 ? "s" : ""} no período</>
-                }
+              <span className="sm:ml-auto" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#22c55e", fontWeight: 500 }}>
+                {salesLoading ? (
+                  <><span className="h-3 w-3 border border-emerald-500 border-t-transparent rounded-full animate-spin inline-block" /> Carregando...</>
+                ) : (
+                  <><svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>{salesData.length} venda{salesData.length !== 1 ? "s" : ""} no período</>
+                )}
               </span>
             )}
           </div>
         </section>
 
         {/* Cards financeiros */}
-        <section className="mb-6">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Financeiro</h2>
+        <section style={{ marginBottom: 24 }}>
+          <h2 style={sectionLabel}>Financeiro</h2>
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <FinancialCard
               title="Investimento em Tráfego"
@@ -308,42 +302,56 @@ export function Dashboard({ events }: Props) {
               subtitle={metaLoaded ? "Meta Ads · período selecionado" : "Soma de todos os eventos"}
               icon={<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>}
             />
-            <FinancialCard title="Faturamento Bruto" value={grossRevenue} color="blue" subtitle="Valor pago pelo cliente"
-              icon={<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
-            <FinancialCard title="Faturamento Líquido" value={netRevenue} color="green" subtitle="Valor bruto - taxas da plataforma"
-              icon={<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>} />
-            {/* Card Reembolsos — mesmo padrão que FinancialCard */}
-            <div className={`rounded-2xl border p-3 shadow-sm flex flex-col justify-between transition-all ${
-              refundCount > 0
-                ? "bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800/50"
-                : "bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800"
-            }`}>
-              <div className="flex items-start justify-between">
-                <p className={`text-[9px] font-bold uppercase tracking-widest leading-tight ${refundCount > 0 ? "text-red-700 dark:text-red-400" : "text-gray-400 dark:text-gray-500"}`}>
-                  Reembolsos
-                </p>
-                <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ml-2 ${refundCount > 0 ? "bg-red-100 dark:bg-red-900/60 text-red-600 dark:text-red-400" : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500"}`}>
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                    <path d="M3 3v5h5" />
-                  </svg>
-                </div>
+            <FinancialCard
+              title="Faturamento Bruto"
+              value={grossRevenue}
+              color="blue"
+              subtitle="Valor pago pelo cliente"
+              icon={<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+            />
+            <FinancialCard
+              title="Faturamento Líquido"
+              value={netRevenue}
+              color="green"
+              subtitle="Valor bruto - taxas da plataforma"
+              icon={<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>}
+            />
+            {/* Card Reembolsos */}
+            <div style={{
+              background: "#161616",
+              border: "1px solid #252525",
+              borderLeft: `3px solid ${refundCount > 0 ? "#ef4444" : "#374151"}`,
+              borderRadius: "0 12px 12px 0",
+              padding: "14px 16px",
+              display: "flex", flexDirection: "column", gap: 4, position: "relative",
+            }}>
+              <div style={{
+                position: "absolute", top: 12, right: 12,
+                background: "#1f1f1f", borderRadius: 8, padding: 6,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: refundCount > 0 ? "#ef4444" : "#374151",
+              }}>
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" />
+                </svg>
               </div>
-              <div className="mt-2">
-                <p className={`text-lg font-bold tabular-nums leading-none ${refundCount > 0 ? "text-red-700 dark:text-red-400" : "text-gray-400 dark:text-gray-500"}`}>
-                  {refundCount}
-                </p>
-                <p className={`text-[10px] opacity-70 mt-0.5 ${refundCount > 0 ? "text-red-700 dark:text-red-400" : "text-gray-400 dark:text-gray-500"}`}>
-                  {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(refundValue)} estornados
-                </p>
-              </div>
+              <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: refundCount > 0 ? "#991b1b" : "#374151", paddingRight: 32 }}>
+                Reembolsos
+              </p>
+              <p style={{ fontSize: 20, fontWeight: 700, fontVariantNumeric: "tabular-nums", lineHeight: 1, color: refundCount > 0 ? "#ef4444" : "#6b7280" }}>
+                {refundCount}
+              </p>
+              <p style={{ fontSize: 10, color: "#4b5563" }}>
+                {fmtBRL(refundValue)} estornados
+              </p>
             </div>
           </div>
         </section>
 
         {/* Cards indicadores */}
-        <section className="mb-8">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Indicadores</h2>
+        <section style={{ marginBottom: 32 }}>
+          <h2 style={sectionLabel}>Indicadores</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <IndicatorCard title="Ingressos Individuais" value={totalIndividual} trend="up" suffix="vendidos"
               icon={<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>} />
@@ -358,12 +366,15 @@ export function Dashboard({ events }: Props) {
 
         {/* Seção de eventos */}
         <section>
-          <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Programação de Eventos</h2>
-            <div className="flex items-center gap-2">
-              <label htmlFor="city-filter" className="text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">Filtrar por cidade:</label>
-              <select id="city-filter" value={cityFilter} onChange={(e) => setCityFilter(e.target.value)}
-                className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 cursor-pointer">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3" style={{ marginBottom: 16, justifyContent: "space-between" }}>
+            <h2 style={sectionLabel}>Programação de Eventos</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <label style={{ fontSize: 13, color: "#9ca3af", whiteSpace: "nowrap" }}>Filtrar por cidade:</label>
+              <select
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                style={{ background: "#161616", border: "1px solid #252525", color: "white", borderRadius: 10, padding: "8px 12px", fontSize: 13, cursor: "pointer", outline: "none" }}
+              >
                 <option value="all">Todas as cidades</option>
                 {cities.slice(1).map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -371,17 +382,27 @@ export function Dashboard({ events }: Props) {
           </div>
 
           {/* Abas */}
-          <div className="flex gap-1 mb-5 border-b border-gray-200 dark:border-gray-700">
-            {([["proximos", "Próximos eventos", proximos.length], ["realizados", "Realizados", realizados.length]] as const).map(([id, label, count]) => (
-              <button key={id} onClick={() => setTab(id)}
-                className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${tab === id ? "text-emerald-700 dark:text-emerald-400" : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"}`}>
+          <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "1px solid #252525" }}>
+            {([
+              ["proximos",  "Próximos eventos", proximos.length],
+              ["realizados","Realizados",        realizados.length],
+            ] as const).map(([id, label, count]) => (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                style={{
+                  position: "relative", padding: "10px 16px", fontSize: 13, fontWeight: 500,
+                  color: tab === id ? "#22c55e" : "#6b7280",
+                  background: "transparent", border: "none", cursor: "pointer",
+                }}
+              >
                 {label}
                 {count > 0 && (
-                  <span className={`ml-2 rounded-full px-1.5 py-0.5 text-xs font-semibold ${tab === id ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"}`}>
+                  <span style={{ marginLeft: 6, borderRadius: 99, padding: "1px 6px", fontSize: 11, fontWeight: 600, background: tab === id ? "#052e16" : "#1f1f1f", color: tab === id ? "#22c55e" : "#4b5563" }}>
                     {count}
                   </span>
                 )}
-                {tab === id && <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full bg-emerald-600 dark:bg-emerald-500" />}
+                {tab === id && <span style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: "#22c55e", borderRadius: "2px 2px 0 0" }} />}
               </button>
             ))}
           </div>
@@ -389,27 +410,30 @@ export function Dashboard({ events }: Props) {
           {/* Aba: Próximos */}
           {tab === "proximos" && (
             <>
-              <div className="mb-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-700 dark:text-gray-300 text-sm font-medium">Ocupação total do circuito</span>
-                  <span className="text-green-600 dark:text-green-400 text-sm font-semibold">{totalPeople} / {totalCapacity} pessoas ({occupancyPct}%)</span>
+              <div style={{ marginBottom: 20, borderRadius: 14, border: "1px solid #252525", background: "#161616", padding: "14px 18px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, color: "#9ca3af", fontWeight: 500 }}>Ocupação total do circuito</span>
+                  <span style={{ fontSize: 13, color: "#22c55e", fontWeight: 600 }}>{totalPeople} / {totalCapacity} pessoas ({occupancyPct}%)</span>
                 </div>
-                <div className="bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-                  <div className="h-2 rounded-full bg-green-500 progress-bar" style={{ width: `${Math.min(100, occupancyPct)}%` }} />
+                <div style={{ background: "#1f1f1f", borderRadius: 4, height: 8, overflow: "hidden" }}>
+                  <div className="progress-bar" style={{ height: "100%", width: `${Math.min(100, occupancyPct)}%`, background: "#22c55e", borderRadius: 4 }} />
                 </div>
               </div>
+
               {grouped.length === 0 ? (
-                <p className="text-center py-12 text-gray-400 dark:text-gray-500">Nenhum evento futuro encontrado{cityFilter !== "all" ? ` para ${cityFilter}` : ""}.</p>
+                <p style={{ textAlign: "center", padding: "48px 0", color: "#4b5563" }}>
+                  Nenhum evento futuro encontrado{cityFilter !== "all" ? ` para ${cityFilter}` : ""}.
+                </p>
               ) : (
                 <div className="space-y-6">
                   {grouped.map(([key, monthEvents]) => {
                     const [year, monthIdx] = key.split("-");
                     return (
                       <div key={key}>
-                        <div className="flex items-center gap-3 mb-3">
-                          <span className="text-gray-700 dark:text-gray-300 font-semibold text-lg">{MONTHS_PT[parseInt(monthIdx, 10)]} {year}</span>
-                          <div className="flex-1 h-px border-gray-200 dark:border-gray-700 border-t" />
-                          <span className="text-xs text-gray-400 dark:text-gray-500">{monthEvents.length} evento{monthEvents.length > 1 ? "s" : ""}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                          <span style={{ fontSize: 17, fontWeight: 600, color: "#9ca3af" }}>{MONTHS_PT[parseInt(monthIdx, 10)]} {year}</span>
+                          <div style={{ flex: 1, height: 1, background: "#252525" }} />
+                          <span style={{ fontSize: 12, color: "#4b5563" }}>{monthEvents.length} evento{monthEvents.length > 1 ? "s" : ""}</span>
                         </div>
                         <div>{monthEvents.map((ev) => <EventRow key={ev.id} event={ev} />)}</div>
                       </div>
@@ -423,14 +447,16 @@ export function Dashboard({ events }: Props) {
           {/* Aba: Realizados */}
           {tab === "realizados" && (
             realizadosFiltrados.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
-                  <svg className="h-7 w-7 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <div style={{ textAlign: "center", padding: "64px 0" }}>
+                <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 56, height: 56, borderRadius: 28, background: "#161616", marginBottom: 16 }}>
+                  <svg className="h-7 w-7" style={{ color: "#4b5563" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
                   </svg>
                 </div>
-                <p className="text-gray-500 dark:text-gray-400 font-medium">Nenhum evento realizado ainda</p>
-                <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">Eventos aparecerão aqui quando a data passar ou o status for alterado no Admin.</p>
+                <p style={{ color: "#6b7280", fontWeight: 500 }}>Nenhum evento realizado ainda</p>
+                <p style={{ color: "#4b5563", fontSize: 13, marginTop: 4 }}>
+                  Eventos aparecerão aqui quando a data passar ou o status for alterado no Admin.
+                </p>
               </div>
             ) : (
               <div>{realizadosFiltrados.map((ev) => <EventRealizadoRow key={ev.id} event={ev} />)}</div>
@@ -438,7 +464,7 @@ export function Dashboard({ events }: Props) {
           )}
         </section>
 
-        <footer className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-800 text-center text-xs text-gray-400 dark:text-gray-600">
+        <footer style={{ marginTop: 48, paddingTop: 24, borderTop: "1px solid #1f1f1f", textAlign: "center", fontSize: 12, color: "#4b5563" }}>
           Circuito Nacional Jurídico Agro 2026 · Dashboard interno
         </footer>
       </div>

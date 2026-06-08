@@ -4,48 +4,40 @@ import { useState, useRef, useEffect } from "react";
 import type { AppEvent, EventStatus, BandeiraTipo } from "../types";
 import { StateFlagSVG } from "./StateFlagSVG";
 
-// Preview dedicado para URLs — mostra "URL inválida" em vez de fallback silencioso
 function UrlPreviewInForm({ url }: { url: string }) {
   const [failed, setFailed] = useState(false);
-
   useEffect(() => { setFailed(false); }, [url]);
 
   if (!url.trim()) {
     return (
-      <div className="rounded bg-gray-100 dark:bg-gray-700 flex items-center justify-center"
-        style={{ width: 54, height: 36 }}>
-        <span className="text-xs text-gray-400">...</span>
+      <div style={{ width: 54, height: 36, borderRadius: 4, background: "#1f1f1f", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ fontSize: 11, color: "#4b5563" }}>...</span>
       </div>
     );
   }
-
   if (failed) {
     return (
-      <div className="flex items-center gap-2">
-        <div className="rounded bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-center justify-center"
-          style={{ width: 54, height: 36 }}>
-          <svg className="h-4 w-4 text-red-500 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ width: 54, height: 36, borderRadius: 4, background: "#2d0f0f", border: "1px solid #7f1d1d", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg className="h-4 w-4" style={{ color: "#ef4444" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </div>
-        <span className="text-xs text-red-500 dark:text-red-400 font-medium">URL inválida</span>
+        <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 500 }}>URL inválida</span>
       </div>
     );
   }
-
   return (
     <img
       src={url}
       alt=""
       onError={() => setFailed(true)}
-      className="rounded object-cover shadow-sm ring-1 ring-black/10 dark:ring-white/10"
-      style={{ width: 54, height: 36 }}
+      style={{ width: 54, height: 36, borderRadius: 4, objectFit: "cover" }}
     />
   );
 }
 
 type FormData = Omit<AppEvent, "id">;
-
 type Props = {
   initialData?: Partial<AppEvent>;
   onSubmit: (data: FormData) => Promise<void>;
@@ -56,64 +48,48 @@ type Props = {
 const STATES = ["MT", "GO", "PR", "MG", "MS", "BA", "SP", "SC", "RS", "RJ", "ES", "PE", "CE", "PA", "AM"];
 const STATUS_OPTIONS: { value: EventStatus; label: string }[] = [
   { value: "em_andamento", label: "Em andamento" },
-  { value: "adiado", label: "Adiado" },
-  { value: "realizado", label: "Realizado" },
-  { value: "cancelado", label: "Cancelado" },
+  { value: "adiado",       label: "Adiado" },
+  { value: "realizado",    label: "Realizado" },
+  { value: "cancelado",    label: "Cancelado" },
 ];
 
 const EMPTY: FormData = {
-  city: "",
-  state: "MT",
-  date: "",
-  individualTickets: 0,
-  doubleTickets: 0,
-  capacity: 350,
-  trafficInvestment: 0,
-  participantes_final: 0,
-  faturamento_bruto: 0,
-  faturamento_liquido: 0,
-  stateName: "",
-  status: "em_andamento",
-  bandeira_tipo: "auto",
-  bandeira_url: "",
-  bandeira_custom: "",
+  city: "", state: "MT", date: "",
+  individualTickets: 0, doubleTickets: 0, capacity: 350,
+  trafficInvestment: 0, participantes_final: 0,
+  faturamento_bruto: 0, faturamento_liquido: 0,
+  stateName: "", status: "em_andamento",
+  bandeira_tipo: "auto", bandeira_url: "", bandeira_custom: "",
   utm_nomenclatura: "",
 };
 
-// Formata número para exibição BR: 10000.32 → "10.000,32"
 function formatBR(value: number): string {
-  return new Intl.NumberFormat("pt-BR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+  return new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
 
-// Aceita "1.500,50" (BR) ou "1500.50" (US) e retorna número
 function parseCurrency(raw: string): number {
   const s = raw.trim().replace(/\s/g, "");
   if (!s) return 0;
-  // Formato BR: vírgula como separador decimal → remove pontos, troca vírgula por ponto
   if (s.includes(",")) return parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
-  // Formato US ou inteiro puro → remove tudo exceto dígitos e ponto
   return parseFloat(s.replace(/[^\d.]/g, "")) || 0;
 }
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
+    reader.onload  = () => resolve(reader.result as string);
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
 
 export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
-  const [form, setForm] = useState<FormData>({ ...EMPTY, ...initialData });
+  const [form, setForm]                 = useState<FormData>({ ...EMPTY, ...initialData });
   const [rawFaturamento, setRawFaturamento] = useState<string>(
     initialData?.faturamento_bruto ? formatBR(initialData.faturamento_bruto) : ""
   );
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError]           = useState("");
   const [uploadError, setUploadError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -144,25 +120,21 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!form.city.trim()) { setError("Nome da cidade é obrigatório."); return; }
-    if (!form.date) { setError("Data é obrigatória."); return; }
-    if (form.bandeira_tipo === "url" && !form.bandeira_url.trim()) {
-      setError("URL da bandeira é obrigatória."); return;
-    }
-    if (form.bandeira_tipo === "upload" && !form.bandeira_custom) {
-      setError("Faça upload de uma imagem."); return;
-    }
+    if (!form.city.trim())                                   { setError("Nome da cidade é obrigatório."); return; }
+    if (!form.date)                                          { setError("Data é obrigatória."); return; }
+    if (form.bandeira_tipo === "url" && !form.bandeira_url.trim()) { setError("URL da bandeira é obrigatória."); return; }
+    if (form.bandeira_tipo === "upload" && !form.bandeira_custom)  { setError("Faça upload de uma imagem."); return; }
     setSubmitting(true);
     try {
       const bruto = parseCurrency(rawFaturamento);
       await onSubmit({
         ...form,
-        faturamento_bruto: bruto,
+        faturamento_bruto:  bruto,
         faturamento_liquido: parseFloat((bruto * 0.8).toFixed(2)),
-        stateName: form.state,
-        individualTickets: Number(form.individualTickets) || 0,
-        doubleTickets: Number(form.doubleTickets) || 0,
-        trafficInvestment: parseFloat(String(form.trafficInvestment).replace(",", ".")) || 0,
+        stateName:           form.state,
+        individualTickets:   Number(form.individualTickets) || 0,
+        doubleTickets:       Number(form.doubleTickets) || 0,
+        trafficInvestment:   parseFloat(String(form.trafficInvestment).replace(",", ".")) || 0,
         participantes_final: Number(form.participantes_final) || 0,
       });
     } catch (err: unknown) {
@@ -172,13 +144,32 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
     }
   }
 
-  const inputClass = "w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 placeholder-gray-400 dark:placeholder-gray-500";
-  const labelClass = "block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1";
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    background: "#0d0d0d",
+    border: "1px solid #333",
+    color: "white",
+    borderRadius: 10,
+    padding: "10px 12px",
+    fontSize: 13,
+    outline: "none",
+    boxSizing: "border-box",
+  };
+
+  const labelStyle: React.CSSProperties = {
+    display: "block",
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: "0.15em",
+    textTransform: "uppercase",
+    color: "#4b5563",
+    marginBottom: 4,
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
-        <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+        <div style={{ background: "#2d0f0f", border: "1px solid #7f1d1d", color: "#f87171", borderRadius: 10, padding: "10px 14px", fontSize: 13 }}>
           {error}
         </div>
       )}
@@ -186,19 +177,19 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
       {/* Cidade + Estado + Data */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <label className={labelClass}>Cidade *</label>
-          <input className={inputClass} placeholder="Ex: Cuiabá" value={form.city}
+          <label style={labelStyle}>Cidade *</label>
+          <input style={inputStyle} placeholder="Ex: Cuiabá" value={form.city}
             onChange={(e) => set("city", e.target.value)} />
         </div>
         <div>
-          <label className={labelClass}>Estado *</label>
-          <select className={inputClass} value={form.state} onChange={(e) => set("state", e.target.value)}>
+          <label style={labelStyle}>Estado *</label>
+          <select style={inputStyle} value={form.state} onChange={(e) => set("state", e.target.value)}>
             {STATES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>
-          <label className={labelClass}>Data *</label>
-          <input type="date" className={inputClass} value={form.date}
+          <label style={labelStyle}>Data *</label>
+          <input type="date" style={inputStyle} value={form.date}
             onChange={(e) => set("date", e.target.value)} />
         </div>
       </div>
@@ -206,23 +197,26 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
       {/* Ingressos + Capacidade */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div>
-          <label className={labelClass}>Ingressos individuais</label>
-          <input type="text" inputMode="numeric" className={inputClass} value={form.individualTickets === 0 ? "" : form.individualTickets}
+          <label style={labelStyle}>Ingressos individuais</label>
+          <input type="text" inputMode="numeric" style={inputStyle}
+            value={form.individualTickets === 0 ? "" : form.individualTickets}
             onChange={(e) => set("individualTickets", Number(e.target.value))} />
         </div>
         <div>
-          <label className={labelClass}>Ingressos duplos</label>
-          <input type="text" inputMode="numeric" className={inputClass} value={form.doubleTickets === 0 ? "" : form.doubleTickets}
+          <label style={labelStyle}>Ingressos duplos</label>
+          <input type="text" inputMode="numeric" style={inputStyle}
+            value={form.doubleTickets === 0 ? "" : form.doubleTickets}
             onChange={(e) => set("doubleTickets", Number(e.target.value))} />
         </div>
         <div>
-          <label className={labelClass}>Capacidade</label>
-          <input type="number" min="1" className={inputClass} value={form.capacity}
+          <label style={labelStyle}>Capacidade</label>
+          <input type="number" min="1" style={inputStyle} value={form.capacity}
             onChange={(e) => set("capacity", Number(e.target.value))} />
         </div>
         <div>
-          <label className={labelClass}>Investimento tráfego (R$)</label>
-          <input type="text" inputMode="decimal" className={inputClass} value={form.trafficInvestment === 0 ? "" : form.trafficInvestment}
+          <label style={labelStyle}>Investimento tráfego (R$)</label>
+          <input type="text" inputMode="decimal" style={inputStyle}
+            value={form.trafficInvestment === 0 ? "" : form.trafficInvestment}
             onChange={(e) => set("trafficInvestment", Number(e.target.value))} />
         </div>
       </div>
@@ -230,50 +224,46 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
       {/* Resultados finais */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className={labelClass}>Participantes finais</label>
-          <input type="text" inputMode="numeric" className={inputClass} value={form.participantes_final === 0 ? "" : form.participantes_final}
+          <label style={labelStyle}>Participantes finais</label>
+          <input type="text" inputMode="numeric" style={inputStyle}
+            value={form.participantes_final === 0 ? "" : form.participantes_final}
             onChange={(e) => set("participantes_final", Number(e.target.value))} />
         </div>
         <div>
-          <label className={labelClass}>Faturamento bruto do evento (R$)</label>
-          <input
-            type="text"
-            inputMode="decimal"
-            className={inputClass}
+          <label style={labelStyle}>Faturamento bruto do evento (R$)</label>
+          <input type="text" inputMode="decimal" style={inputStyle}
             placeholder="Ex: 1.500,50 ou 1500.50"
             value={rawFaturamento}
-            onChange={(e) => setRawFaturamento(e.target.value)}
-          />
+            onChange={(e) => setRawFaturamento(e.target.value)} />
         </div>
       </div>
 
       {/* Status + UTM */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className={labelClass}>Status</label>
-          <select className={inputClass} value={form.status}
+          <label style={labelStyle}>Status</label>
+          <select style={inputStyle} value={form.status}
             onChange={(e) => set("status", e.target.value as EventStatus)}>
             {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
         <div>
-          <label className={labelClass}>Nomenclatura UTM</label>
-          <input className={inputClass} placeholder="Ex: CUIABA" value={form.utm_nomenclatura}
+          <label style={labelStyle}>Nomenclatura UTM</label>
+          <input style={inputStyle} placeholder="Ex: CUIABA" value={form.utm_nomenclatura}
             onChange={(e) => set("utm_nomenclatura", e.target.value.toUpperCase())} />
         </div>
       </div>
 
       {/* Bandeira */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-4">
-        <label className={labelClass + " mb-3"}>Bandeira / Imagem do evento</label>
+      <div style={{ borderRadius: 12, border: "1px solid #252525", background: "#111", padding: 16 }}>
+        <label style={{ ...labelStyle, marginBottom: 12 }}>Bandeira / Imagem do evento</label>
 
-        <div className="flex gap-4 mb-4">
+        <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
           {(["auto", "upload", "url"] as BandeiraTipo[]).map((tipo) => (
-            <label key={tipo} className="flex items-center gap-2 cursor-pointer">
+            <label key={tipo} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
               <input type="radio" name="bandeira_tipo" value={tipo} checked={form.bandeira_tipo === tipo}
                 onChange={() => {
                   setUploadError("");
-                  // Limpa os campos do outro tipo ao trocar
                   if (tipo === "auto") {
                     setForm((prev) => ({ ...prev, bandeira_tipo: "auto", bandeira_url: "", bandeira_custom: "" }));
                     if (fileRef.current) fileRef.current.value = "";
@@ -285,7 +275,7 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
                   }
                 }}
                 className="accent-emerald-600" />
-              <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">
+              <span style={{ fontSize: 13, color: "#9ca3af", textTransform: "capitalize" }}>
                 {tipo === "auto" ? "Automática (SVG)" : tipo === "upload" ? "Upload" : "URL"}
               </span>
             </label>
@@ -295,53 +285,81 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
         {form.bandeira_tipo === "upload" && (
           <div>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange}
-              className="block w-full text-sm text-gray-600 dark:text-gray-400 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-400 file:px-3 file:py-1.5 file:text-sm file:font-medium file:cursor-pointer hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 cursor-pointer" />
-            {uploadError && <p className="mt-1 text-xs text-red-500">{uploadError}</p>}
-            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Máximo 2MB. PNG, JPG ou SVG.</p>
+              className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-[#1f1f1f] file:text-[#22c55e] file:px-3 file:py-1.5 file:text-sm file:font-medium file:cursor-pointer"
+              style={{ color: "#6b7280" }} />
+            {uploadError && <p style={{ marginTop: 4, fontSize: 11, color: "#ef4444" }}>{uploadError}</p>}
+            <p style={{ marginTop: 4, fontSize: 11, color: "#4b5563" }}>Máximo 2MB. PNG, JPG ou SVG.</p>
           </div>
         )}
 
         {form.bandeira_tipo === "url" && (
           <div>
-            <input className={inputClass} placeholder="https://..." value={form.bandeira_url}
+            <input style={inputStyle} placeholder="https://..." value={form.bandeira_url}
               onChange={(e) => set("bandeira_url", e.target.value)} />
-            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Se a URL falhar, o SVG automático é exibido.</p>
+            <p style={{ marginTop: 4, fontSize: 11, color: "#4b5563" }}>Se a URL falhar, o SVG automático é exibido.</p>
           </div>
         )}
 
-        {/* Preview */}
-        <div className="mt-4 flex items-center gap-3 min-h-[44px]">
-          <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">Preview:</span>
+        <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12, minHeight: 44 }}>
+          <span style={{ fontSize: 11, color: "#4b5563", flexShrink: 0 }}>Preview:</span>
 
           {form.bandeira_tipo === "auto" && (
             form.state
               ? <StateFlagSVG state={form.state} size={36} bandeira_tipo="auto" bandeira_url="" bandeira_custom="" />
-              : <span className="text-xs text-gray-400 dark:text-gray-500 italic">Preencha o campo UF</span>
+              : <span style={{ fontSize: 11, color: "#4b5563", fontStyle: "italic" }}>Preencha o campo UF</span>
           )}
 
           {form.bandeira_tipo === "upload" && (
             form.bandeira_custom
-              ? <img src={form.bandeira_custom} alt="" className="rounded object-cover shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 54, height: 36 }} />
-              : <div className="rounded bg-gray-100 dark:bg-gray-700 flex items-center justify-center" style={{ width: 54, height: 36 }}>
-                  <span className="text-xs text-gray-400">—</span>
+              ? <img src={form.bandeira_custom} alt="" style={{ width: 54, height: 36, borderRadius: 4, objectFit: "cover" }} />
+              : <div style={{ width: 54, height: 36, borderRadius: 4, background: "#1f1f1f", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontSize: 11, color: "#4b5563" }}>—</span>
                 </div>
           )}
 
           {form.bandeira_tipo === "url" && <UrlPreviewInForm url={form.bandeira_url} />}
 
-          <span className="text-sm text-gray-600 dark:text-gray-400">{form.city || "Cidade"} · {form.state}</span>
+          <span style={{ fontSize: 13, color: "#6b7280" }}>{form.city || "Cidade"} · {form.state}</span>
         </div>
       </div>
 
       {/* Ações */}
-      <div className="flex gap-3 pt-2">
-        <button type="submit" disabled={submitting}
-          className="flex-1 sm:flex-none sm:min-w-[140px] rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-2.5 px-6 text-sm transition-colors">
+      <div style={{ display: "flex", gap: 12, paddingTop: 8 }}>
+        <button
+          type="submit"
+          disabled={submitting}
+          style={{
+            flex: "0 0 auto",
+            minWidth: 140,
+            background: "#22c55e",
+            color: "white",
+            fontWeight: 700,
+            padding: "10px 24px",
+            borderRadius: 10,
+            border: "none",
+            fontSize: 13,
+            cursor: submitting ? "not-allowed" : "pointer",
+            opacity: submitting ? 0.6 : 1,
+          }}
+        >
           {submitting ? "Salvando..." : isEdit ? "Salvar alterações" : "Adicionar evento"}
         </button>
         {onCancel && (
-          <button type="button" onClick={onCancel} disabled={submitting}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-medium py-2.5 px-6 text-sm transition-colors disabled:opacity-60">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={submitting}
+            style={{
+              background: "#1f1f1f",
+              border: "1px solid #252525",
+              color: "#6b7280",
+              padding: "10px 24px",
+              borderRadius: 10,
+              fontSize: 13,
+              cursor: "pointer",
+              opacity: submitting ? 0.6 : 1,
+            }}
+          >
             Cancelar
           </button>
         )}

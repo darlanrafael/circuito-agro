@@ -1,34 +1,19 @@
 @import "tailwindcss";
 
-/* Tailwind v4: ativa dark mode por classe em vez de media query */
-@custom-variant dark (&:where(.dark, .dark *));
-
-:root {
-  --background: #f8f7f4;
-  --foreground: #1a1a1a;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-.dark {
-  --background: #0f1117;
-  --foreground: #f0f0f0;
+/* ── Always dark — sem toggle light/dark ─────────────────────────────────── */
+html, body {
+  background: #0d0d0d;
+  color: white;
+  min-height: 100vh;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-* {
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 }
 
 @keyframes shimmer {
@@ -39,3 +24,6 @@ body {
 .progress-bar {
   transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* Scrollbar dark */
+* { scrollbar-color: #252525 #0d0d0d; scrollbar-width: thin; }

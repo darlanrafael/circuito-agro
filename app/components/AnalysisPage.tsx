@@ -3,32 +3,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { NavBar } from "./NavBar";
 
-// ── Tipos ──────────────────────────────────────────────────────────────────────
-
 type ApiCampaign = {
-  city: string;
-  state: string;
-  utm_nomenclatura: string;
-  invested: number;
-  revenue: number;
-  roi: number;
-  cpa: number;
-  individualTickets: number;
-  doubleTickets: number;
-  trackedCount: number;
-  trackedRevenue: number;
-  buggedCount: number;
-  buggedRevenue: number;
+  city: string; state: string; utm_nomenclatura: string;
+  invested: number; revenue: number; roi: number; cpa: number;
+  individualTickets: number; doubleTickets: number;
+  trackedCount: number; trackedRevenue: number;
+  buggedCount: number; buggedRevenue: number;
   unknownCount: number;
   attribution: { tracked: number; buggedUtm: number; unknown: number };
 };
 
 type ApiResponse = {
-  totalInvested: number;
-  totalRevenue: number;
-  totalTickets: number;
-  roi: number;
-  averageCpa: number;
+  totalInvested: number; totalRevenue: number; totalTickets: number;
+  roi: number; averageCpa: number;
   attribution: {
     tracked:   { count: number; revenue: number; percentage: number };
     buggedUtm: { count: number; revenue: number; percentage: number };
@@ -40,13 +27,8 @@ type ApiResponse = {
 type DateFilter = "today" | "yesterday" | "7days" | "month" | "custom";
 
 const DATE_PRESETS: Record<Exclude<DateFilter, "custom">, string> = {
-  today:     "today",
-  yesterday: "yesterday",
-  "7days":   "last_7d",
-  month:     "this_month",
+  today: "today", yesterday: "yesterday", "7days": "last_7d", month: "this_month",
 };
-
-// ── Filtros rápidos ────────────────────────────────────────────────────────────
 
 const QUICK_FILTERS = [
   { label: "Todas (REGIONAL)", value: "" },
@@ -60,16 +42,12 @@ const QUICK_FILTERS = [
   { label: "Sorriso",          value: "SORRISO" },
 ];
 
-// ── Formatadores ───────────────────────────────────────────────────────────────
-
 function fmtDec(v: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency", currency: "BRL",
     minimumFractionDigits: 2, maximumFractionDigits: 2,
   }).format(v);
 }
-
-// ── Componente ─────────────────────────────────────────────────────────────────
 
 export function AnalysisPage() {
   const [inputValue, setInputValue]   = useState("REGIONAL");
@@ -81,7 +59,6 @@ export function AnalysisPage() {
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState<string | null>(null);
 
-  // ── Fetch ────────────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -107,7 +84,6 @@ export function AnalysisPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // ── Aplicar filtro ────────────────────────────────────────────────────────
   function applyFilter(value: string) {
     const v = value.trim().toUpperCase();
     const city = v === "REGIONAL" || v === "" ? "" : v;
@@ -116,83 +92,78 @@ export function AnalysisPage() {
   }
 
   const DATE_FILTER_LABELS: Record<DateFilter, string> = {
-    today:     "Hoje",
-    yesterday: "Ontem",
-    "7days":   "Últimos 7 dias",
-    month:     "Este mês",
-    custom:    "Personalizado",
+    today: "Hoje", yesterday: "Ontem", "7days": "Últimos 7 dias",
+    month: "Este mês", custom: "Personalizado",
   };
 
-  const campaigns = data?.campaigns ?? [];
+  const campaigns  = data?.campaigns ?? [];
   const attribution = data?.attribution;
-  const activeLabel = QUICK_FILTERS.find((f) => f.value === selectedCity)?.label
-    ?? (selectedCity || "REGIONAL");
+  const activeLabel = QUICK_FILTERS.find((f) => f.value === selectedCity)?.label ?? (selectedCity || "REGIONAL");
 
-  // ROAS card: estilo condicional baseado no valor
+  // ROAS card — inline style logic
   const roasVal      = data?.roi ?? 0;
   const roasInvested = data?.totalInvested ?? 0;
   const roasNoData   = !loading && roasInvested === 0;
   const roasGood     = !loading && !roasNoData && roasVal >= 1;
   const roasBad      = !loading && !roasNoData && roasVal < 1;
-  const roasCardCls  = roasNoData
-    ? "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60"
+
+  const roasCardStyle: React.CSSProperties = roasNoData
+    ? { background: "#161616", border: "1px solid #252525" }
     : roasGood
-    ? "border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/30"
-    : "border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30";
-  const roasIconCls  = roasNoData
-    ? "rounded-lg bg-slate-100 dark:bg-slate-700/80 p-2 text-slate-500 dark:text-slate-400"
+    ? { background: "#0f1f0f", border: "1px solid #166534" }
+    : { background: "#1f0a0a", border: "1px solid #7f1d1d" };
+  const roasIconStyle: React.CSSProperties = roasNoData
+    ? { background: "#1f1f1f", color: "#6b7280" }
     : roasGood
-    ? "rounded-lg bg-emerald-100 dark:bg-emerald-900/50 p-2 text-emerald-600 dark:text-emerald-400"
-    : "rounded-lg bg-red-100 dark:bg-red-900/50 p-2 text-red-600 dark:text-red-400";
-  const roasLabelCls = roasNoData
-    ? "text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400"
-    : roasGood
-    ? "text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400"
-    : "text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-400";
-  const roasValCls   = roasNoData
-    ? "text-2xl font-bold tabular-nums text-slate-500 dark:text-slate-400"
-    : roasGood
-    ? "text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400"
-    : "text-2xl font-bold tabular-nums text-red-700 dark:text-red-400";
-  const roasSubCls   = roasNoData
-    ? "text-xs text-slate-500/70 dark:text-slate-500 mt-1"
-    : roasGood
-    ? "text-xs text-emerald-600/70 dark:text-emerald-500 mt-1"
-    : "text-xs text-red-600/70 dark:text-red-500 mt-1";
-  const roasDisplay  = loading || roasNoData ? "—"
-    : roasBad ? `−${roasVal.toFixed(1)}x`
-    : `${roasVal.toFixed(1)}x`;
+    ? { background: "#052e16", color: "#22c55e" }
+    : { background: "#2d0f0f", color: "#ef4444" };
+  const roasLabelColor = roasNoData ? "#6b7280" : roasGood ? "#22c55e" : "#ef4444";
+  const roasValColor   = roasNoData ? "#6b7280" : roasGood ? "#22c55e" : "#ef4444";
+  const roasSubColor   = roasNoData ? "#4b5563" : roasGood ? "#166534" : "#991b1b";
+  const roasDisplay    = loading || roasNoData ? "—" : roasBad ? `−${roasVal.toFixed(1)}x` : `${roasVal.toFixed(1)}x`;
+
+  const sectionLabel: React.CSSProperties = {
+    marginBottom: 10, fontSize: 9, fontWeight: 700,
+    textTransform: "uppercase", letterSpacing: "0.2em", color: "#4b5563",
+  };
+
+  const inputStyle: React.CSSProperties = {
+    borderRadius: 10, border: "1px solid #333", background: "#0d0d0d",
+    color: "white", padding: "6px 12px", fontSize: 13, outline: "none",
+  };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0f1117]">
+    <div style={{ minHeight: "100vh", background: "#0d0d0d" }}>
       <NavBar />
 
       <div className="mx-auto max-w-7xl px-4 py-6 sm:py-8">
 
         {/* Cabeçalho */}
-        <header className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#0F172A] dark:text-white">
+        <header style={{ marginBottom: 32 }}>
+          <h1 style={{ fontSize: "clamp(20px, 3vw, 26px)", fontWeight: 700, color: "white" }}>
             Análise de Investimento por Campanha
-            <span className="text-emerald-600 dark:text-emerald-400"> · UTM</span>
+            <span style={{ color: "#22c55e" }}> · UTM</span>
           </h1>
-          <p className="mt-1 text-sm text-[#64748B] dark:text-slate-400">
+          <p style={{ marginTop: 4, fontSize: 13, color: "#6b7280" }}>
             Rastreamento de origem de vendas por parâmetros UTM das campanhas de tráfego pago
           </p>
         </header>
 
         {/* Filtro de período */}
-        <section className="mb-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="inline-flex bg-gray-800 rounded-xl p-1 gap-0.5">
+        <section style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "inline-flex", background: "#161616", border: "1px solid #1f1f1f", borderRadius: 14, padding: 4, gap: 2 }}>
               {(["today", "yesterday", "7days", "month", "custom"] as const).map((key) => (
                 <button
                   key={key}
                   onClick={() => setDateFilter(key)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap ${
-                    dateFilter === key
-                      ? "bg-white text-gray-900 shadow"
-                      : "text-gray-400 hover:text-gray-200"
-                  }`}
+                  style={{
+                    borderRadius: 10, padding: "6px 12px", fontSize: 12, whiteSpace: "nowrap",
+                    fontWeight: dateFilter === key ? 700 : 500,
+                    background: dateFilter === key ? "#22c55e" : "transparent",
+                    color: dateFilter === key ? "white" : "#6b7280",
+                    border: "none", cursor: "pointer", transition: "all 0.15s",
+                  }}
                 >
                   {DATE_FILTER_LABELS[key]}
                 </button>
@@ -200,58 +171,50 @@ export function AnalysisPage() {
             </div>
 
             {dateFilter === "custom" && (
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="rounded-lg border border-[#E2E8F0] dark:border-slate-600 bg-white dark:bg-slate-800 text-[#0F172A] dark:text-slate-100 px-3 py-1.5 text-xs"
-                />
-                <span className="text-xs text-[#64748B] dark:text-slate-400">até</span>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="rounded-lg border border-[#E2E8F0] dark:border-slate-600 bg-white dark:bg-slate-800 text-[#0F172A] dark:text-slate-100 px-3 py-1.5 text-xs"
-                />
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} style={inputStyle} />
+                <span style={{ fontSize: 12, color: "#4b5563" }}>até</span>
+                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} style={inputStyle} />
               </div>
             )}
           </div>
         </section>
 
-        {/* Filtros */}
-        <section className="mb-8 rounded-2xl border border-[#E2E8F0] dark:border-slate-700 bg-white dark:bg-slate-800/50 p-5">
-          <p className="mb-3 text-sm font-semibold text-[#475569] dark:text-slate-300">
+        {/* Filtro de nomenclatura */}
+        <section style={{ marginBottom: 32, borderRadius: 16, border: "1px solid #252525", background: "#161616", padding: 20 }}>
+          <p style={{ marginBottom: 12, fontSize: 13, fontWeight: 600, color: "#9ca3af" }}>
             Filtrar por nomenclatura de campanha
           </p>
-          <div className="flex gap-2 mb-4">
+          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
             <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === "Enter" && applyFilter(inputValue)}
               placeholder="Ex: REGIONAL, UBERLANDIA, CUIABA..."
-              className="flex-1 rounded-lg border border-[#E2E8F0] dark:border-slate-600 bg-[#F8FAFC] dark:bg-slate-900 text-[#0F172A] dark:text-slate-100 px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              style={{ flex: 1, borderRadius: 10, border: "1px solid #333", background: "#0d0d0d", color: "white", padding: "8px 12px", fontSize: 13, outline: "none" }}
             />
             <button
               onClick={() => applyFilter(inputValue)}
-              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-semibold transition-colors"
+              style={{ borderRadius: 10, background: "#22c55e", color: "white", padding: "8px 16px", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}
             >
               Aplicar filtro
             </button>
           </div>
 
           {/* Pills */}
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
             {QUICK_FILTERS.map((qf) => (
               <button
                 key={qf.value}
                 onClick={() => applyFilter(qf.value || "REGIONAL")}
-                className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
-                  selectedCity === qf.value
-                    ? "bg-emerald-600 text-white border-emerald-600"
-                    : "bg-white dark:bg-slate-700 text-[#475569] dark:text-slate-300 border-[#E2E8F0] dark:border-slate-600 hover:border-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-400"
-                }`}
+                style={{
+                  borderRadius: 99, padding: "4px 12px", fontSize: 12, fontWeight: 500,
+                  border: selectedCity === qf.value ? "1px solid #22c55e" : "1px solid #252525",
+                  background: selectedCity === qf.value ? "#22c55e" : "#0d0d0d",
+                  color: selectedCity === qf.value ? "white" : "#9ca3af",
+                  cursor: "pointer",
+                }}
               >
                 {qf.label}
               </button>
@@ -259,206 +222,159 @@ export function AnalysisPage() {
           </div>
 
           {/* Chip filtro ativo */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-[#64748B] dark:text-slate-400">Filtrando:</span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, color: "#4b5563" }}>Filtrando:</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, borderRadius: 99, background: "#052e16", padding: "3px 10px", fontSize: 12, fontWeight: 600, color: "#22c55e" }}>
               <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
               </svg>
               {activeLabel}
               {!loading && campaigns.length > 0 && selectedCity !== "" && (
-                <span className="text-emerald-600 dark:text-emerald-400">
-                  · {campaigns.length} campanha{campaigns.length !== 1 ? "s" : ""}
-                </span>
+                <span style={{ color: "#16a34a" }}>· {campaigns.length} campanha{campaigns.length !== 1 ? "s" : ""}</span>
               )}
             </span>
-            {loading && (
-              <span className="h-3.5 w-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-            )}
+            {loading && <span className="h-3.5 w-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />}
           </div>
         </section>
 
-        {/* Estado de erro */}
+        {/* Erro */}
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-950 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+          <div style={{ marginBottom: 24, borderRadius: 14, border: "1px solid #7f1d1d", background: "#2d0f0f", padding: "10px 14px", fontSize: 13, color: "#f87171" }}>
             Erro ao carregar dados: {error}
           </div>
         )}
 
         {/* Cards de métricas */}
-        <section className="mb-8">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#64748B] dark:text-slate-400">
-            Métricas do período filtrado
-          </h2>
+        <section style={{ marginBottom: 32 }}>
+          <h2 style={sectionLabel}>Métricas do período filtrado</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+
             {/* Investido */}
-            <div className="rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="rounded-lg bg-red-100 dark:bg-red-900/50 p-2 text-red-600 dark:text-red-400">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-                  </svg>
-                </div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-400">Investido</span>
+            <div style={{ background: "#1f0a0a", border: "1px solid #252525", borderLeft: "3px solid #ef4444", borderRadius: "0 12px 12px 0", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
+              <div style={{ position: "absolute", top: 12, right: 12, background: "#1f1f1f", borderRadius: 8, padding: 6, display: "flex", color: "#ef4444" }}>
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>
               </div>
-              <p className="text-2xl font-bold tabular-nums text-red-700 dark:text-red-400">
+              <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#991b1b", paddingRight: 32 }}>Investido</p>
+              <p style={{ fontSize: 20, fontWeight: 700, fontVariantNumeric: "tabular-nums", lineHeight: 1, color: "#ef4444" }}>
                 {loading ? "—" : fmtDec(data?.totalInvested ?? 0)}
               </p>
-              <p className="text-xs text-red-600/70 dark:text-red-500 mt-1">Tráfego pago</p>
+              <p style={{ fontSize: 10, color: "#4b5563" }}>Tráfego pago</p>
             </div>
 
             {/* Faturamento */}
-            <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/30 p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="rounded-lg bg-emerald-100 dark:bg-emerald-900/50 p-2 text-emerald-600 dark:text-emerald-400">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">Faturamento</span>
+            <div style={{ background: "#0f1f0f", border: "1px solid #252525", borderLeft: "3px solid #22c55e", borderRadius: "0 12px 12px 0", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
+              <div style={{ position: "absolute", top: 12, right: 12, background: "#1f1f1f", borderRadius: 8, padding: 6, display: "flex", color: "#22c55e" }}>
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
-              <p className="text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+              <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#15803d", paddingRight: 32 }}>Faturamento</p>
+              <p style={{ fontSize: 20, fontWeight: 700, fontVariantNumeric: "tabular-nums", lineHeight: 1, color: "#22c55e" }}>
                 {loading ? "—" : fmtDec(data?.totalRevenue ?? 0)}
               </p>
-              <p className="text-xs text-emerald-600/70 dark:text-emerald-500 mt-1">Receita total</p>
+              <p style={{ fontSize: 10, color: "#4b5563" }}>Receita total</p>
             </div>
 
             {/* ROAS */}
-            <div className={`rounded-2xl border p-5 ${roasCardCls}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className={roasIconCls}>
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                <span className={roasLabelCls}>ROAS rastreado</span>
+            <div style={{ ...roasCardStyle, borderLeft: `3px solid ${roasValColor}`, borderRadius: "0 12px 12px 0", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
+              <div style={{ position: "absolute", top: 12, right: 12, ...roasIconStyle, borderRadius: 8, padding: 6, display: "flex" }}>
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
               </div>
-              <p className={roasValCls}>{roasDisplay}</p>
-              <p className={roasSubCls}>Retorno sobre o investimento</p>
+              <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: roasLabelColor, paddingRight: 32 }}>ROAS rastreado</p>
+              <p style={{ fontSize: 20, fontWeight: 700, fontVariantNumeric: "tabular-nums", lineHeight: 1, color: roasValColor }}>{roasDisplay}</p>
+              <p style={{ fontSize: 10, color: roasSubColor }}>Retorno sobre o investimento</p>
             </div>
 
             {/* CPA */}
-            <div className="rounded-2xl border border-[#E2E8F0] dark:border-slate-700 bg-[#F1F5F9] dark:bg-slate-800/60 p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="rounded-lg bg-white dark:bg-slate-700/80 p-2 text-[#475569] dark:text-slate-300 shadow-sm">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B] dark:text-slate-400">CPA médio</span>
+            <div style={{ background: "#161616", border: "1px solid #252525", borderLeft: "3px solid #374151", borderRadius: "0 12px 12px 0", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
+              <div style={{ position: "absolute", top: 12, right: 12, background: "#1f1f1f", borderRadius: 8, padding: 6, display: "flex", color: "#6b7280" }}>
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
               </div>
-              <p className="text-2xl font-bold tabular-nums text-[#0F172A] dark:text-slate-100">
+              <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#374151", paddingRight: 32 }}>CPA médio</p>
+              <p style={{ fontSize: 20, fontWeight: 700, fontVariantNumeric: "tabular-nums", lineHeight: 1, color: "#6b7280" }}>
                 {loading ? "—" : fmtDec(data?.averageCpa ?? 0)}
               </p>
-              <p className="text-xs text-[#64748B] dark:text-slate-500 mt-1">Por ingresso vendido</p>
+              <p style={{ fontSize: 10, color: "#4b5563" }}>Por ingresso vendido</p>
             </div>
           </div>
         </section>
 
         {/* Atribuição */}
-        <section className="mb-8">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#64748B] dark:text-slate-400">
-            Atribuição das vendas
-          </h2>
-          <div className="rounded-2xl border border-[#E2E8F0] dark:border-slate-700 bg-white dark:bg-slate-800/50 p-5">
+        <section style={{ marginBottom: 32 }}>
+          <h2 style={sectionLabel}>Atribuição das vendas</h2>
+          <div style={{ borderRadius: 16, border: "1px solid #252525", background: "#161616", padding: 20 }}>
             {/* Barra stacked */}
-            <div className="mb-5">
-              <div className="flex rounded-full overflow-hidden h-4 gap-0.5">
-                <div
-                  className="bg-emerald-500 transition-all duration-700"
-                  style={{ width: `${attribution?.tracked.percentage ?? 0}%` }}
-                  title={`Rastreadas: ${attribution?.tracked.percentage ?? 0}%`}
-                />
-                <div
-                  className="bg-amber-400 transition-all duration-700"
-                  style={{ width: `${attribution?.buggedUtm.percentage ?? 0}%` }}
-                  title={`UTM bugada: ${attribution?.buggedUtm.percentage ?? 0}%`}
-                />
-                <div
-                  className="bg-slate-300 dark:bg-slate-600 transition-all duration-700"
-                  style={{ width: `${attribution?.unknown.percentage ?? 0}%` }}
-                  title={`Desconhecida: ${attribution?.unknown.percentage ?? 0}%`}
-                />
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", borderRadius: 99, overflow: "hidden", height: 14, gap: 2 }}>
+                <div style={{ background: "#22c55e", width: `${attribution?.tracked.percentage ?? 0}%`, transition: "width 0.7s" }} title={`Rastreadas: ${attribution?.tracked.percentage ?? 0}%`} />
+                <div style={{ background: "#eab308", width: `${attribution?.buggedUtm.percentage ?? 0}%`, transition: "width 0.7s" }} title={`UTM bugada: ${attribution?.buggedUtm.percentage ?? 0}%`} />
+                <div style={{ background: "#374151", width: `${attribution?.unknown.percentage ?? 0}%`, transition: "width 0.7s" }} title={`Desconhecida: ${attribution?.unknown.percentage ?? 0}%`} />
               </div>
-              <div className="flex justify-between mt-1 text-xs text-[#64748B] dark:text-slate-400">
-                <span className="flex items-center gap-1">
-                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 11, color: "#6b7280" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ display: "inline-block", height: 8, width: 8, borderRadius: 99, background: "#22c55e" }} />
                   Rastreadas {attribution?.tracked.percentage ?? 0}%
                 </span>
-                <span className="flex items-center gap-1">
-                  <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
+                <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ display: "inline-block", height: 8, width: 8, borderRadius: 99, background: "#eab308" }} />
                   UTM bugada {attribution?.buggedUtm.percentage ?? 0}%
                 </span>
-                <span className="flex items-center gap-1">
-                  <span className="inline-block h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600" />
+                <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ display: "inline-block", height: 8, width: 8, borderRadius: 99, background: "#374151" }} />
                   Desconhecida {attribution?.unknown.percentage ?? 0}%
                 </span>
               </div>
             </div>
 
-            {/* 3 cards de atribuição */}
+            {/* 3 sub-cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Rastreadas */}
-              <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/30 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="rounded-lg bg-emerald-100 dark:bg-emerald-900/50 p-2">
-                    <svg className="h-4 w-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+              <div style={{ borderRadius: 12, border: "1px solid #166534", background: "#0f1f0f", padding: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <div style={{ borderRadius: 8, background: "#052e16", padding: 8 }}>
+                    <svg className="h-4 w-4" style={{ color: "#22c55e" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   </div>
-                  <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Rastreadas</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#4ade80" }}>Rastreadas</span>
                 </div>
-                <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
+                <p style={{ fontSize: 19, fontWeight: 700, color: "#22c55e", fontVariantNumeric: "tabular-nums" }}>
                   {loading ? "—" : fmtDec(attribution?.tracked.revenue ?? 0)}
                 </p>
-                <p className="text-xs text-emerald-600 dark:text-emerald-500 mt-0.5">
+                <p style={{ fontSize: 12, color: "#15803d", marginTop: 2 }}>
                   {attribution?.tracked.percentage ?? 0}% · {attribution?.tracked.count ?? 0} ingressos
                 </p>
-                <p className="text-xs text-emerald-700/60 dark:text-emerald-600 mt-2">
-                  UTM completa e atribuída corretamente
-                </p>
+                <p style={{ fontSize: 11, color: "#166534", marginTop: 8 }}>UTM completa e atribuída corretamente</p>
               </div>
 
               {/* UTM bugada */}
-              <div className="rounded-xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/30 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="rounded-lg bg-amber-100 dark:bg-amber-900/50 p-2">
-                    <svg className="h-4 w-4 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
+              <div style={{ borderRadius: 12, border: "1px solid #92400e", background: "#1f1a0a", padding: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <div style={{ borderRadius: 8, background: "#292100", padding: 8 }}>
+                    <svg className="h-4 w-4" style={{ color: "#eab308" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                   </div>
-                  <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">Tráfego pago UTM bugada</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#fbbf24" }}>Tráfego pago UTM bugada</span>
                 </div>
-                <p className="text-xl font-bold text-amber-700 dark:text-amber-400 tabular-nums">
+                <p style={{ fontSize: 19, fontWeight: 700, color: "#eab308", fontVariantNumeric: "tabular-nums" }}>
                   {loading ? "—" : fmtDec(attribution?.buggedUtm.revenue ?? 0)}
                 </p>
-                <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">
+                <p style={{ fontSize: 12, color: "#a16207", marginTop: 2 }}>
                   {attribution?.buggedUtm.percentage ?? 0}% · {attribution?.buggedUtm.count ?? 0} ingressos
                 </p>
-                <p className="text-xs text-amber-700/60 dark:text-amber-600 mt-2">
-                  Clique rastreado porém parâmetros UTM incompletos
-                </p>
+                <p style={{ fontSize: 11, color: "#92400e", marginTop: 8 }}>Clique rastreado porém parâmetros UTM incompletos</p>
               </div>
 
               {/* Desconhecida */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="rounded-lg bg-slate-100 dark:bg-slate-700 p-2">
-                    <svg className="h-4 w-4 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+              <div style={{ borderRadius: 12, border: "1px solid #252525", background: "#161616", padding: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <div style={{ borderRadius: 8, background: "#1f1f1f", padding: 8 }}>
+                    <svg className="h-4 w-4" style={{ color: "#6b7280" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   </div>
-                  <span className="text-sm font-semibold text-[#475569] dark:text-slate-300">Origem desconhecida</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#9ca3af" }}>Origem desconhecida</span>
                 </div>
-                <p className="text-xl font-bold text-[#475569] dark:text-slate-300 tabular-nums">
+                <p style={{ fontSize: 19, fontWeight: 700, color: "#6b7280", fontVariantNumeric: "tabular-nums" }}>
                   {loading ? "—" : fmtDec(0)}
                 </p>
-                <p className="text-xs text-[#64748B] dark:text-slate-400 mt-0.5">
+                <p style={{ fontSize: 12, color: "#4b5563", marginTop: 2 }}>
                   {attribution?.unknown.percentage ?? 0}% · {attribution?.unknown.count ?? 0} ingressos
                 </p>
-                <p className="text-xs text-[#94A3B8] dark:text-slate-500 mt-2">
-                  Sem parâmetros UTM — tráfego orgânico ou direto
-                </p>
+                <p style={{ fontSize: 11, color: "#374151", marginTop: 8 }}>Sem parâmetros UTM — tráfego orgânico ou direto</p>
               </div>
             </div>
           </div>
@@ -466,69 +382,57 @@ export function AnalysisPage() {
 
         {/* Tabela detalhada */}
         <section>
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#64748B] dark:text-slate-400">
-            Detalhamento por campanha
-          </h2>
-          <div className="rounded-2xl border border-[#E2E8F0] dark:border-slate-700 bg-white dark:bg-slate-800/50 overflow-hidden">
+          <h2 style={sectionLabel}>Detalhamento por campanha</h2>
+          <div style={{ borderRadius: 16, border: "1px solid #252525", background: "#161616", overflow: "hidden" }}>
             {loading ? (
-              <div className="p-8 text-center text-[#94A3B8] dark:text-slate-500 animate-pulse">
+              <div style={{ padding: 32, textAlign: "center", color: "#4b5563" }} className="animate-pulse">
                 Carregando dados…
               </div>
             ) : campaigns.length === 0 ? (
-              <p className="p-8 text-center text-[#94A3B8] dark:text-slate-500">
+              <p style={{ padding: 32, textAlign: "center", color: "#4b5563" }}>
                 Nenhuma campanha encontrada para o filtro &ldquo;{activeLabel}&rdquo;.
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
                   <thead>
-                    <tr className="border-b border-[#E2E8F0] dark:border-slate-700 bg-[#F8FAFC] dark:bg-slate-900/60">
-                      <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#64748B] dark:text-slate-400">Cidade / Campanha</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#64748B] dark:text-slate-400">Investido</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#64748B] dark:text-slate-400">Faturamento</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#64748B] dark:text-slate-400">ROAS</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#64748B] dark:text-slate-400">CPA</th>
-                      <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#64748B] dark:text-slate-400">Atribuição</th>
+                    <tr style={{ background: "#111", borderBottom: "1px solid #252525" }}>
+                      {["Cidade / Campanha", "Investido", "Faturamento", "ROAS", "CPA", "Atribuição"].map((h, i) => (
+                        <th key={h} style={{ padding: "10px 16px", fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.15em", color: "#4b5563", textAlign: i === 0 ? "left" : i === 5 ? "center" : "right" }}>
+                          {h}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#F1F5F9] dark:divide-slate-700/60">
+                  <tbody>
                     {campaigns.map((c) => {
-                      const rowRoasColor = c.invested === 0
-                        ? "text-[#94A3B8] dark:text-slate-500"
-                        : c.roi >= 1
-                        ? "text-emerald-700 dark:text-emerald-400"
-                        : "text-red-600 dark:text-red-400";
-                      const rowRoasText = c.invested === 0
-                        ? "—"
-                        : c.roi >= 1
-                        ? `${c.roi.toFixed(1)}x`
-                        : `−${c.roi.toFixed(1)}x`;
-
+                      const rowRoasColor = c.invested === 0 ? "#4b5563" : c.roi >= 1 ? "#22c55e" : "#ef4444";
+                      const rowRoasText  = c.invested === 0 ? "—" : c.roi >= 1 ? `${c.roi.toFixed(1)}x` : `−${c.roi.toFixed(1)}x`;
                       return (
-                        <tr key={c.utm_nomenclatura} className="hover:bg-[#F8FAFC] dark:hover:bg-slate-700/30 transition-colors">
-                          <td className="px-4 py-3">
-                            <p className="font-semibold text-[#0F172A] dark:text-slate-100">{c.city} · {c.state}</p>
-                            <p className="text-xs text-[#64748B] dark:text-slate-400 font-mono mt-0.5">{c.utm_nomenclatura}</p>
+                        <tr key={c.utm_nomenclatura} style={{ borderBottom: "1px solid #1f1f1f" }}>
+                          <td style={{ padding: "10px 16px" }}>
+                            <p style={{ fontWeight: 600, color: "white" }}>{c.city} · {c.state}</p>
+                            <p style={{ fontSize: 11, color: "#4b5563", fontFamily: "monospace", marginTop: 2 }}>{c.utm_nomenclatura}</p>
                           </td>
-                          <td className="px-4 py-3 text-right font-medium text-red-600 dark:text-red-400 tabular-nums">
+                          <td style={{ padding: "10px 16px", textAlign: "right", fontWeight: 500, color: "#ef4444", fontVariantNumeric: "tabular-nums" }}>
                             {fmtDec(c.invested)}
                           </td>
-                          <td className="px-4 py-3 text-right font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">
+                          <td style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "#22c55e", fontVariantNumeric: "tabular-nums" }}>
                             {fmtDec(c.revenue)}
                           </td>
-                          <td className={`px-4 py-3 text-right font-bold tabular-nums ${rowRoasColor}`}>
+                          <td style={{ padding: "10px 16px", textAlign: "right", fontWeight: 700, color: rowRoasColor, fontVariantNumeric: "tabular-nums" }}>
                             {rowRoasText}
                           </td>
-                          <td className="px-4 py-3 text-right text-[#475569] dark:text-slate-300 tabular-nums">
+                          <td style={{ padding: "10px 16px", textAlign: "right", color: "#9ca3af", fontVariantNumeric: "tabular-nums" }}>
                             {fmtDec(c.cpa)}
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="flex rounded-full overflow-hidden h-2 w-full min-w-[80px]">
-                              <div className="bg-emerald-500" style={{ width: `${c.attribution.tracked}%` }} title={`Rastreado: ${c.attribution.tracked}%`} />
-                              <div className="bg-amber-400" style={{ width: `${c.attribution.buggedUtm}%` }} title={`UTM bugada: ${c.attribution.buggedUtm}%`} />
-                              <div className="flex-1 bg-slate-200 dark:bg-slate-600" title="Desconhecido" />
+                          <td style={{ padding: "10px 16px" }}>
+                            <div style={{ display: "flex", borderRadius: 99, overflow: "hidden", height: 8, minWidth: 80 }}>
+                              <div style={{ background: "#22c55e", width: `${c.attribution.tracked}%` }} title={`Rastreado: ${c.attribution.tracked}%`} />
+                              <div style={{ background: "#eab308", width: `${c.attribution.buggedUtm}%` }} title={`UTM bugada: ${c.attribution.buggedUtm}%`} />
+                              <div style={{ flex: 1, background: "#374151" }} title="Desconhecido" />
                             </div>
-                            <p className="text-xs text-[#94A3B8] dark:text-slate-500 mt-1 text-center">
+                            <p style={{ fontSize: 11, color: "#4b5563", marginTop: 4, textAlign: "center" }}>
                               {c.trackedCount}·{c.buggedCount}·{c.unknownCount}
                             </p>
                           </td>
@@ -538,28 +442,20 @@ export function AnalysisPage() {
                   </tbody>
                   {campaigns.length > 1 && data && (
                     <tfoot>
-                      <tr className="border-t-2 border-[#E2E8F0] dark:border-slate-600 bg-[#F8FAFC] dark:bg-slate-900/40">
-                        <td className="px-4 py-3 font-bold text-[#0F172A] dark:text-slate-100">
+                      <tr style={{ borderTop: "2px solid #252525", background: "#111" }}>
+                        <td style={{ padding: "10px 16px", fontWeight: 700, color: "white" }}>
                           Total ({campaigns.length} campanhas)
                         </td>
-                        <td className="px-4 py-3 text-right font-bold text-red-600 dark:text-red-400 tabular-nums">
+                        <td style={{ padding: "10px 16px", textAlign: "right", fontWeight: 700, color: "#ef4444", fontVariantNumeric: "tabular-nums" }}>
                           {fmtDec(data.totalInvested)}
                         </td>
-                        <td className="px-4 py-3 text-right font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
+                        <td style={{ padding: "10px 16px", textAlign: "right", fontWeight: 700, color: "#22c55e", fontVariantNumeric: "tabular-nums" }}>
                           {fmtDec(data.totalRevenue)}
                         </td>
-                        <td className={`px-4 py-3 text-right font-bold tabular-nums ${
-                          data.totalInvested === 0
-                            ? "text-[#94A3B8] dark:text-slate-500"
-                            : data.roi >= 1
-                            ? "text-emerald-700 dark:text-emerald-400"
-                            : "text-red-600 dark:text-red-400"
-                        }`}>
-                          {data.totalInvested === 0 ? "—"
-                            : data.roi >= 1 ? `${data.roi.toFixed(1)}x`
-                            : `−${data.roi.toFixed(1)}x`}
+                        <td style={{ padding: "10px 16px", textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: data.totalInvested === 0 ? "#4b5563" : data.roi >= 1 ? "#22c55e" : "#ef4444" }}>
+                          {data.totalInvested === 0 ? "—" : data.roi >= 1 ? `${data.roi.toFixed(1)}x` : `−${data.roi.toFixed(1)}x`}
                         </td>
-                        <td className="px-4 py-3 text-right font-bold text-[#475569] dark:text-slate-300 tabular-nums">
+                        <td style={{ padding: "10px 16px", textAlign: "right", fontWeight: 700, color: "#9ca3af", fontVariantNumeric: "tabular-nums" }}>
                           {fmtDec(data.averageCpa)}
                         </td>
                         <td />
@@ -572,7 +468,7 @@ export function AnalysisPage() {
           </div>
         </section>
 
-        <footer className="mt-12 pt-6 border-t border-[#E2E8F0] dark:border-slate-800 text-center text-xs text-[#94A3B8] dark:text-slate-600">
+        <footer style={{ marginTop: 48, paddingTop: 24, borderTop: "1px solid #1f1f1f", textAlign: "center", fontSize: 12, color: "#4b5563" }}>
           Circuito Nacional Jurídico Agro 2026 · Análise UTM
         </footer>
       </div>

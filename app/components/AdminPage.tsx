@@ -13,20 +13,20 @@ const STATUS_LABELS: Record<EventStatus, string> = {
   cancelado: "Cancelado",
 };
 
-const STATUS_BADGE: Record<EventStatus, string> = {
-  em_andamento: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  adiado: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  realizado: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
-  cancelado: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+const STATUS_BADGE_STYLE: Record<EventStatus, React.CSSProperties> = {
+  em_andamento: { background: "#0f1a2e", color: "#60a5fa",  border: "1px solid #1d4ed8" },
+  adiado:       { background: "#1f1a0a", color: "#fbbf24",  border: "1px solid #92400e" },
+  realizado:    { background: "#0f1f0f", color: "#4ade80",  border: "1px solid #166534" },
+  cancelado:    { background: "#1f0a0a", color: "#9ca3af",  border: "1px solid #374151" },
 };
 
 export function AdminPage() {
-  const [events, setEvents] = useState<AppEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [events, setEvents]         = useState<AppEvent[]>([]);
+  const [loading, setLoading]       = useState(true);
   const [fetchError, setFetchError] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editingId, setEditingId]   = useState<string | null>(null);
+  const [deleteId, setDeleteId]     = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -102,22 +102,30 @@ export function AdminPage() {
   }
 
   const editingEvent = editingId !== null ? events.find((e) => e.id === String(editingId)) : undefined;
-  const deleteEvent = deleteId !== null ? events.find((e) => e.id === String(deleteId)) : undefined;
+  const deleteEvent  = deleteId  !== null ? events.find((e) => e.id === String(deleteId))  : undefined;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div style={{ minHeight: "100vh", background: "#0d0d0d" }}>
       <NavBar />
       <div className="mx-auto max-w-5xl px-4 py-8">
 
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
+        <div style={{ marginBottom: 32, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Painel Administrativo</h1>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Gerencie os eventos do Circuito Nacional Jurídico Agro 2026</p>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "white" }}>Painel Administrativo</h1>
+            <p style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
+              Gerencie os eventos do Circuito Nacional Jurídico Agro 2026
+            </p>
           </div>
           <button
             onClick={() => { setShowAddForm((v) => !v); setEditingId(null); }}
-            className="flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-5 text-sm transition-colors">
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              borderRadius: 10, background: "#22c55e", color: "white",
+              fontWeight: 700, padding: "10px 20px", fontSize: 13,
+              border: "none", cursor: "pointer",
+            }}
+          >
             {showAddForm ? (
               <><svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>Cancelar</>
             ) : (
@@ -128,7 +136,7 @@ export function AdminPage() {
 
         {/* Toast de sucesso */}
         {successMsg && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
+          <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 8, borderRadius: 10, background: "#0f1f0f", border: "1px solid #166534", padding: "10px 14px", fontSize: 13, color: "#4ade80" }}>
             <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
             {successMsg}
           </div>
@@ -136,9 +144,9 @@ export function AdminPage() {
 
         {/* Formulário de adição */}
         {showAddForm && (
-          <section className="mb-8 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-800 p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
-              <svg className="h-5 w-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+          <section style={{ marginBottom: 32, borderRadius: 14, border: "1px solid #22c55e", background: "#161616", padding: 24 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: "white", marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
+              <svg className="h-5 w-5" style={{ color: "#22c55e" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
               Adicionar novo evento
             </h2>
             <EventForm onSubmit={handleAdd} onCancel={() => setShowAddForm(false)} />
@@ -147,56 +155,57 @@ export function AdminPage() {
 
         {/* Lista de eventos */}
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-4">
+          <h2 style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.2em", color: "#4b5563", marginBottom: 16 }}>
             Eventos cadastrados {!loading && `(${events.length})`}
           </h2>
 
           {loading && (
-            <div className="flex items-center justify-center py-16">
+            <div style={{ display: "flex", justifyContent: "center", padding: "64px 0" }}>
               <div className="h-8 w-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
           {fetchError && !loading && (
-            <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+            <div style={{ borderRadius: 10, background: "#2d0f0f", border: "1px solid #7f1d1d", padding: "10px 14px", fontSize: 13, color: "#f87171" }}>
               {fetchError}
-              <button onClick={loadEvents} className="ml-3 underline font-medium">Tentar novamente</button>
+              <button onClick={loadEvents} style={{ marginLeft: 12, textDecoration: "underline", fontWeight: 600, background: "none", border: "none", color: "#f87171", cursor: "pointer" }}>
+                Tentar novamente
+              </button>
             </div>
           )}
 
           {!loading && !fetchError && events.length === 0 && (
-            <div className="text-center py-12 text-gray-400 dark:text-gray-500">
+            <div style={{ textAlign: "center", padding: "48px 0", color: "#4b5563" }}>
               Nenhum evento cadastrado.
             </div>
           )}
 
           {!loading && events.map((event) => (
-            <div key={event.id} className="mb-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
+            <div key={event.id} style={{ marginBottom: 12, borderRadius: 14, border: "1px solid #252525", background: "#161616", overflow: "hidden" }}>
 
               {/* Row principal */}
-              <div className="flex items-center gap-4 p-4">
+              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 16 }}>
                 <StateFlagSVG
-                  state={event.state}
-                  size={28}
+                  state={event.state} size={28}
                   bandeira_tipo={event.bandeira_tipo}
                   bandeira_url={event.bandeira_url}
                   bandeira_custom={event.bandeira_custom}
                 />
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-gray-900 dark:text-white">{event.city}</span>
-                    <span className="text-gray-400 dark:text-gray-500 text-sm">·</span>
-                    <span className="text-gray-500 dark:text-gray-400 text-sm">{event.state}</span>
-                    <span className="text-gray-400 dark:text-gray-500 text-sm">·</span>
-                    <span className="text-gray-500 dark:text-gray-400 text-sm">
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontWeight: 600, color: "white" }}>{event.city}</span>
+                    <span style={{ color: "#333" }}>·</span>
+                    <span style={{ color: "#6b7280", fontSize: 13 }}>{event.state}</span>
+                    <span style={{ color: "#333" }}>·</span>
+                    <span style={{ color: "#6b7280", fontSize: 13 }}>
                       {new Date(event.date + "T00:00:00").toLocaleDateString("pt-BR")}
                     </span>
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[event.status]}`}>
+                    <span style={{ borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600, ...STATUS_BADGE_STYLE[event.status] }}>
                       {STATUS_LABELS[event.status]}
                     </span>
                   </div>
-                  <div className="flex gap-4 mt-1 text-xs text-gray-400 dark:text-gray-500">
+                  <div style={{ display: "flex", gap: 12, marginTop: 4, fontSize: 12, color: "#4b5563" }}>
                     <span>Individual: {event.individualTickets}</span>
                     <span>Duplo: {event.doubleTickets}</span>
                     <span>Capacidade: {event.capacity}</span>
@@ -204,16 +213,32 @@ export function AdminPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-2 flex-shrink-0">
+                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                   <button
                     onClick={() => { setEditingId(editingId === event.id ? null : event.id); setShowAddForm(false); }}
-                    className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 hover:border-emerald-300 dark:hover:border-emerald-700 py-1.5 px-3 text-sm font-medium transition-colors">
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6,
+                      borderRadius: 8, border: "1px solid #252525",
+                      background: "transparent", color: "#6b7280",
+                      padding: "6px 12px", fontSize: 13, fontWeight: 500, cursor: "pointer",
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#22c55e"; (e.currentTarget as HTMLButtonElement).style.color = "#22c55e"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#252525"; (e.currentTarget as HTMLButtonElement).style.color = "#6b7280"; }}
+                  >
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     {editingId === event.id ? "Fechar" : "Editar"}
                   </button>
                   <button
                     onClick={() => setDeleteId(event.id)}
-                    className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:border-red-300 dark:hover:border-red-700 py-1.5 px-3 text-sm font-medium transition-colors">
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6,
+                      borderRadius: 8, border: "1px solid #252525",
+                      background: "transparent", color: "#6b7280",
+                      padding: "6px 12px", fontSize: 13, fontWeight: 500, cursor: "pointer",
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#ef4444"; (e.currentTarget as HTMLButtonElement).style.color = "#ef4444"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#252525"; (e.currentTarget as HTMLButtonElement).style.color = "#6b7280"; }}
+                  >
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     Excluir
                   </button>
@@ -222,8 +247,10 @@ export function AdminPage() {
 
               {/* Formulário de edição inline */}
               {editingId === event.id && editingEvent && (
-                <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 p-6">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Editando: {event.city}</h3>
+                <div style={{ borderTop: "1px solid #252525", background: "#111", padding: 24 }}>
+                  <h3 style={{ fontSize: 13, fontWeight: 600, color: "#9ca3af", marginBottom: 16 }}>
+                    Editando: {event.city}
+                  </h3>
                   <EventForm
                     isEdit
                     initialData={editingEvent}
@@ -239,32 +266,46 @@ export function AdminPage() {
 
       {/* Modal de confirmação de exclusão */}
       {deleteId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                <svg className="h-5 w-5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
+          <div style={{ background: "#161616", borderRadius: 20, boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #252525", padding: 24, maxWidth: 360, width: "100%" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+              <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 20, background: "#2d0f0f", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg className="h-5 w-5" style={{ color: "#ef4444" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <div className="flex-1">
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white">Excluir evento</h3>
-                <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                  Tem certeza que deseja excluir o evento de <strong className="text-gray-700 dark:text-gray-300">{deleteEvent?.city}</strong>? Esta ação não pode ser desfeita.
+              <div style={{ flex: 1 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: "white" }}>Excluir evento</h3>
+                <p style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
+                  Tem certeza que deseja excluir o evento de{" "}
+                  <strong style={{ color: "#9ca3af" }}>{deleteEvent?.city}</strong>?
+                  {" "}Esta ação não pode ser desfeita.
                 </p>
               </div>
             </div>
-            <div className="flex gap-3 mt-5">
+            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
               <button
                 onClick={() => handleDelete(deleteId)}
                 disabled={deleteLoading}
-                className="flex-1 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-semibold py-2.5 text-sm transition-colors">
+                style={{
+                  flex: 1, borderRadius: 10, background: "#ef4444", color: "white",
+                  fontWeight: 700, padding: "10px 0", fontSize: 13, border: "none",
+                  cursor: deleteLoading ? "not-allowed" : "pointer",
+                  opacity: deleteLoading ? 0.6 : 1,
+                }}
+              >
                 {deleteLoading ? "Excluindo..." : "Sim, excluir"}
               </button>
               <button
                 onClick={() => setDeleteId(null)}
                 disabled={deleteLoading}
-                className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium py-2.5 text-sm transition-colors disabled:opacity-60">
+                style={{
+                  flex: 1, borderRadius: 10, border: "1px solid #252525",
+                  background: "#1f1f1f", color: "#9ca3af",
+                  fontWeight: 500, padding: "10px 0", fontSize: 13,
+                  cursor: "pointer", opacity: deleteLoading ? 0.6 : 1,
+                }}
+              >
                 Cancelar
               </button>
             </div>

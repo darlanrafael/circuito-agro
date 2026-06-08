@@ -11,23 +11,19 @@ function getDaysUntil(dateStr: string): number {
   return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function getAutoStatus(occupancy: number) {
-  if (occupancy >= 0.85) return { label: "Quase lotado", color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" };
-  if (occupancy >= 0.5)  return { label: "Vendendo bem", color: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" };
-  if (occupancy >= 0.2)  return { label: "Em andamento", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" };
-  return { label: "Início das vendas", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" };
+type BadgeStyle = { label: string; bg: string; color: string; border: string };
+
+function getAutoStatus(occupancy: number): BadgeStyle {
+  if (occupancy >= 0.85) return { label: "Quase lotado",      bg: "#1f0a0a", color: "#f87171", border: "#7f1d1d" };
+  if (occupancy >= 0.5)  return { label: "Vendendo bem",      bg: "#1f1a0a", color: "#fbbf24", border: "#92400e" };
+  if (occupancy >= 0.2)  return { label: "Em andamento",      bg: "#0f1a0f", color: "#86efac", border: "#15803d" };
+  return                        { label: "Início das vendas", bg: "#0f1f0f", color: "#4ade80", border: "#166534" };
 }
 
-function getBarFillColor(occupancy: number): string {
-  if (occupancy >= 0.85) return "bg-red-500";
-  if (occupancy >= 0.5)  return "bg-orange-500";
-  return "bg-green-500";
-}
-
-function getPctTextClass(occupancy: number): string {
-  if (occupancy >= 0.85) return "text-red-500 dark:text-red-400 text-xs font-semibold";
-  if (occupancy >= 0.5)  return "text-orange-500 dark:text-orange-400 text-xs font-semibold";
-  return "text-green-600 dark:text-green-400 text-xs font-semibold";
+function getBarColor(occupancy: number): string {
+  if (occupancy >= 0.85) return "#ef4444";
+  if (occupancy >= 0.5)  return "#eab308";
+  return "#22c55e";
 }
 
 export function EventRow({ event }: { event: AppEvent }) {
@@ -38,77 +34,97 @@ export function EventRow({ event }: { event: AppEvent }) {
   }, [event.date]);
 
   const totalPeople = event.individualTickets + event.doubleTickets * 2;
-  const occupancy = totalPeople / event.capacity;
-  const pct = Math.min(100, Math.round(occupancy * 100));
-  const barFill = getBarFillColor(occupancy);
-  const pctClass = getPctTextClass(occupancy);
+  const occupancy   = totalPeople / event.capacity;
+  const pct         = Math.min(100, Math.round(occupancy * 100));
+  const barColor    = getBarColor(occupancy);
+  const pctColor    = barColor;
 
-  // Badge: adiado sobrepõe o automático
-  const badge = event.status === "adiado"
-    ? { label: "Adiado", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" }
+  const badge: BadgeStyle = event.status === "adiado"
+    ? { label: "Adiado", bg: "#1f1a0a", color: "#fbbf24", border: "#92400e" }
     : getAutoStatus(occupancy);
 
-  const dateObj = new Date(event.date + "T00:00:00");
+  const dateObj      = new Date(event.date + "T00:00:00");
   const formattedDate = dateObj.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-3 hover:shadow-md transition-shadow">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+    <div
+      style={{
+        background: "#161616",
+        border: "1px solid #252525",
+        borderRadius: 14,
+        padding: "14px 18px",
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        marginBottom: 6,
+        transition: "border-color 0.2s",
+        cursor: "default",
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#333"; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#252525"; }}
+    >
+      {/* Bandeira */}
+      <div style={{ flexShrink: 0 }}>
+        <StateFlagSVG
+          state={event.state}
+          size={32}
+          bandeira_tipo={event.bandeira_tipo}
+          bandeira_url={event.bandeira_url}
+          bandeira_custom={event.bandeira_custom}
+        />
+      </div>
 
-        {/* Bandeira + Cidade */}
-        <div className="flex items-center gap-3 min-w-[200px]">
-          <StateFlagSVG
-            state={event.state}
-            size={32}
-            bandeira_tipo={event.bandeira_tipo}
-            bandeira_url={event.bandeira_url}
-            bandeira_custom={event.bandeira_custom}
-          />
-          <div>
-            <p className="text-gray-900 dark:text-white font-semibold text-base leading-tight">
-              {event.city}
-            </p>
-            <p className="text-gray-500 dark:text-gray-400 text-sm">{event.state}</p>
-          </div>
-        </div>
+      {/* Cidade */}
+      <div style={{ minWidth: 160 }}>
+        <p style={{ fontSize: 15, fontWeight: 700, color: "white", lineHeight: 1.2 }}>{event.city}</p>
+        <p style={{ fontSize: 11, color: "#6b7280" }}>{event.state}</p>
+      </div>
 
-        {/* Data + Countdown */}
-        <div className="min-w-[130px]">
-          <p className="text-gray-700 dark:text-gray-300 text-sm">{formattedDate}</p>
-          <p className="text-gray-500 dark:text-gray-400 text-xs">
-            {days === 0 ? "Hoje!" : days > 0 ? `em ${days} dias` : `há ${Math.abs(days)} dias`}
-          </p>
-        </div>
+      {/* Data */}
+      <div style={{ minWidth: 90, textAlign: "center" }}>
+        <p style={{ fontSize: 12, color: "#6b7280" }}>{formattedDate}</p>
+        <p style={{ fontSize: 10, color: "#4b5563" }}>
+          {days === 0 ? "Hoje!" : days > 0 ? `em ${days} dias` : `há ${Math.abs(days)} dias`}
+        </p>
+      </div>
 
-        {/* Ingressos */}
-        <div className="flex gap-4 min-w-[160px]">
-          <div className="text-center">
-            <p className="text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wide">Individual</p>
-            <p className="text-gray-900 dark:text-white font-bold text-xl tabular-nums">{event.individualTickets}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wide">Duplo</p>
-            <p className="text-gray-900 dark:text-white font-bold text-xl tabular-nums">{event.doubleTickets}</p>
-          </div>
+      {/* Ingressos */}
+      <div style={{ display: "flex", gap: 16, minWidth: 140 }}>
+        <div style={{ textAlign: "center" }}>
+          <p style={{ fontSize: 9, textTransform: "uppercase", color: "#4b5563", letterSpacing: "0.1em" }}>Individual</p>
+          <p style={{ fontSize: 16, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>{event.individualTickets}</p>
         </div>
+        <div style={{ textAlign: "center" }}>
+          <p style={{ fontSize: 9, textTransform: "uppercase", color: "#4b5563", letterSpacing: "0.1em" }}>Duplo</p>
+          <p style={{ fontSize: 16, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>{event.doubleTickets}</p>
+        </div>
+      </div>
 
-        {/* Barra de capacidade */}
-        <div className="flex-1 min-w-[140px]">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-gray-500 dark:text-gray-400 text-xs">{totalPeople} / {event.capacity} pessoas</span>
-            <span className={pctClass}>{pct}%</span>
-          </div>
-          <div className="bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-            <div className={`h-2 rounded-full progress-bar ${barFill}`} style={{ width: `${pct}%` }} />
-          </div>
+      {/* Barra de capacidade */}
+      <div style={{ flex: 1, minWidth: 130 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+          <span style={{ fontSize: 10, color: "#4b5563" }}>{totalPeople} / {event.capacity} pessoas</span>
+          <span style={{ fontSize: 10, fontWeight: 600, color: pctColor }}>{pct}%</span>
         </div>
+        <div style={{ height: 5, background: "#1f1f1f", borderRadius: 3, overflow: "hidden" }}>
+          <div className="progress-bar" style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 3 }} />
+        </div>
+      </div>
 
-        {/* Badge de status */}
-        <div className="flex items-center">
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${badge.color}`}>
-            {badge.label}
-          </span>
-        </div>
+      {/* Badge */}
+      <div style={{ flexShrink: 0 }}>
+        <span style={{
+          background: badge.bg,
+          color: badge.color,
+          border: `1px solid ${badge.border}`,
+          fontSize: 10,
+          fontWeight: 600,
+          padding: "3px 10px",
+          borderRadius: 6,
+          whiteSpace: "nowrap",
+        }}>
+          {badge.label}
+        </span>
       </div>
     </div>
   );
