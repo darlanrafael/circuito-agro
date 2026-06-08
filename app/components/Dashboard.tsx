@@ -41,7 +41,8 @@ type MetaCampaign = {
 function getMetaParams(
   dateFilter: DateFilter,
   dateFrom: string,
-  dateTo: string
+  dateTo: string,
+  city?: string
 ): URLSearchParams {
   const p = new URLSearchParams();
   if (dateFilter === "today")         p.set("date_preset", "today");
@@ -54,6 +55,7 @@ function getMetaParams(
   } else {
     p.set("date_preset", "last_30d");
   }
+  if (city) p.set("city", city);
   return p;
 }
 
@@ -134,6 +136,14 @@ export function Dashboard({ events }: Props) {
     [filteredEvents]
   );
 
+  // utm_nomenclatura da cidade selecionada para filtrar campanhas Meta por cidade
+  const selectedCityUtm = useMemo(
+    () => cityFilter !== "all" && filteredEvents.length > 0
+      ? (filteredEvents[0].utm_nomenclatura ?? "")
+      : "",
+    [cityFilter, filteredEvents]
+  );
+
   // Busca vendas sempre (para reembolsos) — aplica data quando filtro ativo
   const fetchSales = useCallback(async () => {
     setSalesLoading(true);
@@ -159,7 +169,7 @@ export function Dashboard({ events }: Props) {
     setMetaLoading(true);
     setMetaError(null);
     try {
-      const params = getMetaParams(dateFilter, dateFrom, dateTo);
+      const params = getMetaParams(dateFilter, dateFrom, dateTo, selectedCityUtm || undefined);
       const res = await fetch(`/api/meta/campaigns?${params}`);
       const data = await res.json();
       if (res.status === 503 && data.error === "not_configured") {
@@ -177,7 +187,7 @@ export function Dashboard({ events }: Props) {
     } finally {
       setMetaLoading(false);
     }
-  }, [dateFilter, dateFrom, dateTo]);
+  }, [dateFilter, dateFrom, dateTo, selectedCityUtm]);
 
   useEffect(() => { fetchMeta(); }, [fetchMeta]);
 

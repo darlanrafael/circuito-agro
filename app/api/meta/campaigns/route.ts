@@ -19,6 +19,11 @@ export async function GET(req: NextRequest) {
   const datePreset = searchParams.get("date_preset");
   const from = searchParams.get("from");
   const to = searchParams.get("to");
+  const city = searchParams.get("city");
+
+  function removeAccents(str: string): string {
+    return str.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+  }
 
   let insightsField: string;
   if (from && to) {
@@ -46,8 +51,15 @@ export async function GET(req: NextRequest) {
     type RawInsights = { spend?: string; impressions?: string; clicks?: string; cpc?: string; cpm?: string; reach?: string };
     type RawCampaign = { id: string; name: string; status: string; insights?: { data?: RawInsights[] } };
 
+    const normalizedCity = city ? removeAccents(city) : null;
+
     const campaigns = (data.data as RawCampaign[] ?? [])
-      .filter((c) => c.name.toUpperCase().includes("REGIONAL"))
+      .filter((c) => {
+        const name = removeAccents(c.name);
+        if (!name.includes("REGIONAL")) return false;
+        if (normalizedCity && !name.includes(normalizedCity)) return false;
+        return true;
+      })
       .map((c) => {
         const ins = c.insights?.data?.[0];
         return {
