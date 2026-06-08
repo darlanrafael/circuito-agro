@@ -71,6 +71,8 @@ const EMPTY: FormData = {
   trafficInvestment: 0,
   participantes_final: 0,
   faturamento_bruto: 0,
+  faturamento_liquido: 0,
+  stateName: "",
   status: "em_andamento",
   bandeira_tipo: "auto",
   bandeira_url: "",
