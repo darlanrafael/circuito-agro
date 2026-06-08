@@ -26,6 +26,37 @@ type Sale = {
   refunded_at: string | null;
 };
 
+type MetaCampaign = {
+  id: string;
+  name: string;
+  status: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  cpc: number;
+  cpm: number;
+  reach: number;
+};
+
+function getMetaParams(
+  dateFilter: DateFilter,
+  dateFrom: string,
+  dateTo: string
+): URLSearchParams {
+  const p = new URLSearchParams();
+  if (dateFilter === "today")         p.set("date_preset", "today");
+  else if (dateFilter === "yesterday") p.set("date_preset", "yesterday");
+  else if (dateFilter === "7days")     p.set("date_preset", "last_7d");
+  else if (dateFilter === "month")     p.set("date_preset", "this_month");
+  else if (dateFilter === "custom" && dateFrom && dateTo) {
+    p.set("from", dateFrom);
+    p.set("to", dateTo);
+  } else {
+    p.set("date_preset", "last_30d");
+  }
+  return p;
+}
+
 function getDateRange(filter: DateFilter, from: string, to: string): { from: string; to: string } | null {
   const now = new Date();
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
@@ -63,6 +94,11 @@ export function Dashboard({ events }: Props) {
   const [dateTo, setDateTo]   = useState("");
   const [salesData, setSalesData] = useState<Sale[]>([]);
   const [salesLoading, setSalesLoading] = useState(false);
+  const [metaCampaigns, setMetaCampaigns] = useState<MetaCampaign[]>([]);
+  const [metaTotalSpend, setMetaTotalSpend] = useState(0);
+  const [metaLoading, setMetaLoading] = useState(false);
+  const [metaError, setMetaError] = useState<string | null>(null);
+  const [metaConfigured, setMetaConfigured] = useState(true);
 
   const cities = useMemo(
     () => ["all", ...Array.from(new Set(events.map((e) => e.city)))],
@@ -119,6 +155,32 @@ export function Dashboard({ events }: Props) {
 
   useEffect(() => { fetchSales(); }, [fetchSales]);
 
+  const fetchMeta = useCallback(async () => {
+    setMetaLoading(true);
+    setMetaError(null);
+    try {
+      const params = getMetaParams(dateFilter, dateFrom, dateTo);
+      const res = await fetch(`/api/meta/campaigns?${params}`);
+      const data = await res.json();
+      if (res.status === 503 && data.error === "not_configured") {
+        setMetaConfigured(false);
+        return;
+      }
+      if (data.error) {
+        setMetaError(data.error);
+        return;
+      }
+      setMetaCampaigns(data.campaigns ?? []);
+      setMetaTotalSpend(data.totalSpend ?? 0);
+    } catch {
+      setMetaError("Não foi possível carregar dados da Meta");
+    } finally {
+      setMetaLoading(false);
+    }
+  }, [dateFilter, dateFrom, dateTo]);
+
+  useEffect(() => { fetchMeta(); }, [fetchMeta]);
+
   // Decide a fonte dos dados para os cards de ingressos/faturamento
   const usingSales = dateFilter !== "all" && !(dateFilter === "custom" && (!dateFrom || !dateTo));
 
@@ -149,8 +211,12 @@ export function Dashboard({ events }: Props) {
     ? approvedSales.reduce((s, sale) => s + (sale.faturamento_liquido || 0), 0)
     : filteredEvents.reduce((s, e) => s + (e.faturamento_liquido > 0 ? e.faturamento_liquido : 0), 0);
   const totalTickets = totalIndividual + totalDouble;
-  const averageCPA = totalTickets > 0 ? trafficInvestment / totalTickets : 0;
-  const totalBalance = netRevenue - trafficInvestment;
+
+  // Usa o gasto real da Meta quando disponível
+  const metaLoaded = metaConfigured && !metaLoading && !metaError;
+  const effectiveInvestment = metaLoaded ? metaTotalSpend : trafficInvestment;
+  const averageCPA = totalTickets > 0 ? effectiveInvestment / totalTickets : 0;
+  const totalBalance = netRevenue - effectiveInvestment;
 
   const fmtBRL = (v: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
@@ -225,8 +291,13 @@ export function Dashboard({ events }: Props) {
         <section className="mb-6">
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Financeiro</h2>
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <FinancialCard title="Investimento em Tráfego" value={trafficInvestment} color="gold" subtitle="Soma de todos os eventos"
-              icon={<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>} />
+            <FinancialCard
+              title="Investimento em Tráfego"
+              value={effectiveInvestment}
+              color="gold"
+              subtitle={metaLoaded ? "Meta Ads · período selecionado" : "Soma de todos os eventos"}
+              icon={<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>}
+            />
             <FinancialCard title="Faturamento Bruto" value={grossRevenue} color="blue" subtitle="Valor pago pelo cliente"
               icon={<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
             <FinancialCard title="Faturamento Líquido" value={netRevenue} color="green" subtitle="Valor bruto - taxas da plataforma"
@@ -274,6 +345,90 @@ export function Dashboard({ events }: Props) {
               icon={<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>} />
           </div>
         </section>
+
+        {/* Meta Ads */}
+        {metaConfigured && (
+          <section className="mb-8">
+            <div className="mb-3 flex items-center gap-3">
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Meta Ads</h2>
+              {metaLoading && (
+                <span className="h-3 w-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
+              )}
+              {!metaLoading && metaLoaded && (
+                <button onClick={fetchMeta} title="Atualizar" className="text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors">
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {metaError ? (
+              <div className="rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-950 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+                {metaError}
+              </div>
+            ) : metaLoading ? (
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500 animate-pulse">
+                Carregando dados da Meta...
+              </div>
+            ) : (
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
+                {/* Resumo */}
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Total investido no período</span>
+                  <span className="text-lg font-bold tabular-nums text-blue-700 dark:text-blue-400">
+                    {fmtBRL(metaTotalSpend)}
+                  </span>
+                </div>
+
+                {/* Tabela de campanhas ativas */}
+                {metaCampaigns.filter((c) => c.status === "ACTIVE").length === 0 ? (
+                  <div className="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+                    Nenhuma campanha ativa no período
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100 dark:border-gray-700">
+                          <th className="text-left px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Campanha</th>
+                          <th className="text-right px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Gasto</th>
+                          <th className="text-right px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 hidden sm:table-cell">Impressões</th>
+                          <th className="text-right px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 hidden sm:table-cell">Cliques</th>
+                          <th className="text-right px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 hidden md:table-cell">CPM</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {metaCampaigns
+                          .filter((c) => c.status === "ACTIVE")
+                          .sort((a, b) => b.spend - a.spend)
+                          .map((c) => (
+                            <tr key={c.id} className="border-b border-gray-50 dark:border-gray-700/50 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                              <td className="px-4 py-2.5 text-gray-800 dark:text-gray-200 max-w-[200px] truncate" title={c.name}>
+                                {c.name}
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-blue-700 dark:text-blue-400">
+                                {fmtBRL(c.spend)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                                {c.impressions.toLocaleString("pt-BR")}
+                              </td>
+                              <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                                {c.clicks.toLocaleString("pt-BR")}
+                              </td>
+                              <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 dark:text-gray-400 hidden md:table-cell">
+                                {fmtBRL(c.cpm)}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Seção de eventos */}
         <section>
