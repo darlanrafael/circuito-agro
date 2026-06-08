@@ -216,7 +216,7 @@ export function Dashboard({ events }: Props) {
         {/* Cards financeiros */}
         <section className="mb-6">
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Financeiro</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-start">
             <FinancialCard title="Investimento em Tráfego" value={trafficInvestment} color="gold" subtitle="Soma de todos os eventos"
               icon={<svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>} />
             <FinancialCard title="Faturamento Bruto" value={grossRevenue} color="blue" subtitle="Valor pago pelo cliente"
@@ -224,20 +224,20 @@ export function Dashboard({ events }: Props) {
             <FinancialCard title="Faturamento Líquido" value={netRevenue} color="green" subtitle="Valor bruto - taxas da plataforma"
               icon={<svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>} />
             {/* Card Reembolsos — mesmo padrão visual que FinancialCard */}
-            <div className={`rounded-2xl border p-6 shadow-sm h-full transition-all ${
+            <div className={`rounded-2xl border p-4 shadow-sm h-full transition-all ${
               refundCount > 0
-                ? "bg-red-950/40 dark:bg-red-950/60 border-red-800/30"
-                : "bg-red-950/40 dark:bg-red-950/60 border-red-800/30 opacity-60"
+                ? "bg-red-100 dark:bg-red-950/60 border-red-300 dark:border-red-800/30"
+                : "bg-red-100 dark:bg-red-950/60 border-red-300 dark:border-red-800/30 opacity-60"
             }`}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-red-400">Reembolsos</p>
-                  <p className="mt-2 text-3xl font-bold tabular-nums text-red-400">{refundCount}</p>
-                  <p className="mt-1 text-sm text-red-400/70">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wider leading-tight text-red-900 dark:text-white">Reembolsos</p>
+                  <p className="mt-1 text-3xl font-bold tabular-nums leading-tight text-red-900 dark:text-white">{refundCount}</p>
+                  <p className="mt-0.5 text-xs text-red-800/70 dark:text-white/60">
                     {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(refundValue)} estornados
                   </p>
                 </div>
-                <div className="rounded-xl p-3 bg-red-900/50 text-red-400 flex-shrink-0">
+                <div className="rounded-xl p-2 flex-shrink-0 bg-red-200 dark:bg-red-900/50 text-red-700 dark:text-white">
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                     <path d="M3 3v5h5" />
