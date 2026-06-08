@@ -130,12 +130,15 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
     }
     setSubmitting(true);
     try {
+      const bruto = parseFloat(String(form.faturamento_bruto).replace(",", ".")) || 0;
       await onSubmit({
         ...form,
-        faturamento_bruto: parseFloat(String(form.faturamento_bruto).replace(',', '.')) || 0,
+        faturamento_bruto: bruto,
+        faturamento_liquido: parseFloat((bruto * 0.8).toFixed(2)),
+        stateName: form.state,
         individualTickets: Number(form.individualTickets) || 0,
         doubleTickets: Number(form.doubleTickets) || 0,
-        trafficInvestment: parseFloat(String(form.trafficInvestment).replace(',', '.')) || 0,
+        trafficInvestment: parseFloat(String(form.trafficInvestment).replace(",", ".")) || 0,
         participantes_final: Number(form.participantes_final) || 0,
       });
     } catch (err: unknown) {
@@ -209,8 +212,8 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
         </div>
         <div>
           <label className={labelClass}>Faturamento bruto do evento (R$)</label>
-          <input type="text" inputMode="decimal" className={inputClass} value={form.faturamento_bruto}
-            onChange={(e) => set("faturamento_bruto", e.target.value as any)} />
+          <input type="text" inputMode="decimal" className={inputClass} value={form.faturamento_bruto === 0 ? "" : form.faturamento_bruto}
+            onChange={(e) => set("faturamento_bruto", parseFloat(e.target.value.replace(",", ".")) || 0)} />
         </div>
       </div>
 
