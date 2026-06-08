@@ -62,13 +62,6 @@ const QUICK_FILTERS = [
 
 // ── Formatadores ───────────────────────────────────────────────────────────────
 
-function fmt(v: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency", currency: "BRL",
-    minimumFractionDigits: 0, maximumFractionDigits: 0,
-  }).format(v);
-}
-
 function fmtDec(v: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency", currency: "BRL",
@@ -134,6 +127,41 @@ export function AnalysisPage() {
   const attribution = data?.attribution;
   const activeLabel = QUICK_FILTERS.find((f) => f.value === selectedCity)?.label
     ?? (selectedCity || "REGIONAL");
+
+  // ROAS card: estilo condicional baseado no valor
+  const roasVal      = data?.roi ?? 0;
+  const roasInvested = data?.totalInvested ?? 0;
+  const roasNoData   = !loading && roasInvested === 0;
+  const roasGood     = !loading && !roasNoData && roasVal >= 1;
+  const roasBad      = !loading && !roasNoData && roasVal < 1;
+  const roasCardCls  = roasNoData
+    ? "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60"
+    : roasGood
+    ? "border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/30"
+    : "border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30";
+  const roasIconCls  = roasNoData
+    ? "rounded-lg bg-slate-100 dark:bg-slate-700/80 p-2 text-slate-500 dark:text-slate-400"
+    : roasGood
+    ? "rounded-lg bg-emerald-100 dark:bg-emerald-900/50 p-2 text-emerald-600 dark:text-emerald-400"
+    : "rounded-lg bg-red-100 dark:bg-red-900/50 p-2 text-red-600 dark:text-red-400";
+  const roasLabelCls = roasNoData
+    ? "text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400"
+    : roasGood
+    ? "text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400"
+    : "text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-400";
+  const roasValCls   = roasNoData
+    ? "text-2xl font-bold tabular-nums text-slate-500 dark:text-slate-400"
+    : roasGood
+    ? "text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400"
+    : "text-2xl font-bold tabular-nums text-red-700 dark:text-red-400";
+  const roasSubCls   = roasNoData
+    ? "text-xs text-slate-500/70 dark:text-slate-500 mt-1"
+    : roasGood
+    ? "text-xs text-emerald-600/70 dark:text-emerald-500 mt-1"
+    : "text-xs text-red-600/70 dark:text-red-500 mt-1";
+  const roasDisplay  = loading || roasNoData ? "—"
+    : roasBad ? `−${roasVal.toFixed(1)}x`
+    : `${roasVal.toFixed(1)}x`;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0f1117]">
@@ -274,7 +302,7 @@ export function AnalysisPage() {
                 <span className="text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-400">Investido</span>
               </div>
               <p className="text-2xl font-bold tabular-nums text-red-700 dark:text-red-400">
-                {loading ? "—" : fmt(data?.totalInvested ?? 0)}
+                {loading ? "—" : fmtDec(data?.totalInvested ?? 0)}
               </p>
               <p className="text-xs text-red-600/70 dark:text-red-500 mt-1">Tráfego pago</p>
             </div>
@@ -290,25 +318,23 @@ export function AnalysisPage() {
                 <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">Faturamento</span>
               </div>
               <p className="text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-                {loading ? "—" : fmt(data?.totalRevenue ?? 0)}
+                {loading ? "—" : fmtDec(data?.totalRevenue ?? 0)}
               </p>
               <p className="text-xs text-emerald-600/70 dark:text-emerald-500 mt-1">Receita total</p>
             </div>
 
-            {/* ROI */}
-            <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/30 p-5">
+            {/* ROAS */}
+            <div className={`rounded-2xl border p-5 ${roasCardCls}`}>
               <div className="flex items-center gap-2 mb-2">
-                <div className="rounded-lg bg-emerald-100 dark:bg-emerald-900/50 p-2 text-emerald-600 dark:text-emerald-400">
+                <div className={roasIconCls}>
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                 </div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">ROI rastreado</span>
+                <span className={roasLabelCls}>ROAS rastreado</span>
               </div>
-              <p className="text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-                {loading ? "—" : <>{(data?.roi ?? 0).toFixed(1)}<span className="text-lg">x</span></>}
-              </p>
-              <p className="text-xs text-emerald-600/70 dark:text-emerald-500 mt-1">Retorno sobre ad spend</p>
+              <p className={roasValCls}>{roasDisplay}</p>
+              <p className={roasSubCls}>Retorno sobre o investimento</p>
             </div>
 
             {/* CPA */}
@@ -383,7 +409,7 @@ export function AnalysisPage() {
                   <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Rastreadas</span>
                 </div>
                 <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
-                  {loading ? "—" : fmt(attribution?.tracked.revenue ?? 0)}
+                  {loading ? "—" : fmtDec(attribution?.tracked.revenue ?? 0)}
                 </p>
                 <p className="text-xs text-emerald-600 dark:text-emerald-500 mt-0.5">
                   {attribution?.tracked.percentage ?? 0}% · {attribution?.tracked.count ?? 0} ingressos
@@ -404,7 +430,7 @@ export function AnalysisPage() {
                   <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">Tráfego pago UTM bugada</span>
                 </div>
                 <p className="text-xl font-bold text-amber-700 dark:text-amber-400 tabular-nums">
-                  {loading ? "—" : fmt(attribution?.buggedUtm.revenue ?? 0)}
+                  {loading ? "—" : fmtDec(attribution?.buggedUtm.revenue ?? 0)}
                 </p>
                 <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">
                   {attribution?.buggedUtm.percentage ?? 0}% · {attribution?.buggedUtm.count ?? 0} ingressos
@@ -425,7 +451,7 @@ export function AnalysisPage() {
                   <span className="text-sm font-semibold text-[#475569] dark:text-slate-300">Origem desconhecida</span>
                 </div>
                 <p className="text-xl font-bold text-[#475569] dark:text-slate-300 tabular-nums">
-                  {loading ? "—" : fmt(0)}
+                  {loading ? "—" : fmtDec(0)}
                 </p>
                 <p className="text-xs text-[#64748B] dark:text-slate-400 mt-0.5">
                   {attribution?.unknown.percentage ?? 0}% · {attribution?.unknown.count ?? 0} ingressos
@@ -460,17 +486,23 @@ export function AnalysisPage() {
                       <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#64748B] dark:text-slate-400">Cidade / Campanha</th>
                       <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#64748B] dark:text-slate-400">Investido</th>
                       <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#64748B] dark:text-slate-400">Faturamento</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#64748B] dark:text-slate-400">ROI</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#64748B] dark:text-slate-400">ROAS</th>
                       <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#64748B] dark:text-slate-400">CPA</th>
                       <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#64748B] dark:text-slate-400">Atribuição</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#F1F5F9] dark:divide-slate-700/60">
                     {campaigns.map((c) => {
-                      const roiColor =
-                        c.roi >= 5 ? "text-emerald-700 dark:text-emerald-400"
-                        : c.roi >= 2 ? "text-amber-600 dark:text-amber-400"
+                      const rowRoasColor = c.invested === 0
+                        ? "text-[#94A3B8] dark:text-slate-500"
+                        : c.roi >= 1
+                        ? "text-emerald-700 dark:text-emerald-400"
                         : "text-red-600 dark:text-red-400";
+                      const rowRoasText = c.invested === 0
+                        ? "—"
+                        : c.roi >= 1
+                        ? `${c.roi.toFixed(1)}x`
+                        : `−${c.roi.toFixed(1)}x`;
 
                       return (
                         <tr key={c.utm_nomenclatura} className="hover:bg-[#F8FAFC] dark:hover:bg-slate-700/30 transition-colors">
@@ -479,13 +511,13 @@ export function AnalysisPage() {
                             <p className="text-xs text-[#64748B] dark:text-slate-400 font-mono mt-0.5">{c.utm_nomenclatura}</p>
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-red-600 dark:text-red-400 tabular-nums">
-                            {fmt(c.invested)}
+                            {fmtDec(c.invested)}
                           </td>
                           <td className="px-4 py-3 text-right font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">
-                            {fmt(c.revenue)}
+                            {fmtDec(c.revenue)}
                           </td>
-                          <td className={`px-4 py-3 text-right font-bold tabular-nums ${roiColor}`}>
-                            {c.roi.toFixed(1)}x
+                          <td className={`px-4 py-3 text-right font-bold tabular-nums ${rowRoasColor}`}>
+                            {rowRoasText}
                           </td>
                           <td className="px-4 py-3 text-right text-[#475569] dark:text-slate-300 tabular-nums">
                             {fmtDec(c.cpa)}
@@ -511,13 +543,21 @@ export function AnalysisPage() {
                           Total ({campaigns.length} campanhas)
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-red-600 dark:text-red-400 tabular-nums">
-                          {fmt(data.totalInvested)}
+                          {fmtDec(data.totalInvested)}
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
-                          {fmt(data.totalRevenue)}
+                          {fmtDec(data.totalRevenue)}
                         </td>
-                        <td className="px-4 py-3 text-right font-bold text-[#0F172A] dark:text-slate-100 tabular-nums">
-                          {data.roi.toFixed(1)}x
+                        <td className={`px-4 py-3 text-right font-bold tabular-nums ${
+                          data.totalInvested === 0
+                            ? "text-[#94A3B8] dark:text-slate-500"
+                            : data.roi >= 1
+                            ? "text-emerald-700 dark:text-emerald-400"
+                            : "text-red-600 dark:text-red-400"
+                        }`}>
+                          {data.totalInvested === 0 ? "—"
+                            : data.roi >= 1 ? `${data.roi.toFixed(1)}x`
+                            : `−${data.roi.toFixed(1)}x`}
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-[#475569] dark:text-slate-300 tabular-nums">
                           {fmtDec(data.averageCpa)}
