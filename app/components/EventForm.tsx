@@ -171,12 +171,12 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div>
           <label className={labelClass}>Ingressos individuais</label>
-          <input type="number" min="0" className={inputClass} value={form.individualTickets}
+          <input type="text" inputMode="numeric" className={inputClass} value={form.individualTickets === 0 ? "" : form.individualTickets}
             onChange={(e) => set("individualTickets", Number(e.target.value))} />
         </div>
         <div>
           <label className={labelClass}>Ingressos duplos</label>
-          <input type="number" min="0" className={inputClass} value={form.doubleTickets}
+          <input type="text" inputMode="numeric" className={inputClass} value={form.doubleTickets === 0 ? "" : form.doubleTickets}
             onChange={(e) => set("doubleTickets", Number(e.target.value))} />
         </div>
         <div>
@@ -186,7 +186,7 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
         </div>
         <div>
           <label className={labelClass}>Investimento tráfego (R$)</label>
-          <input type="number" min="0" step="0.01" className={inputClass} value={form.trafficInvestment}
+          <input type="text" inputMode="decimal" className={inputClass} value={form.trafficInvestment === 0 ? "" : form.trafficInvestment}
             onChange={(e) => set("trafficInvestment", Number(e.target.value))} />
         </div>
       </div>
@@ -195,7 +195,7 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Participantes finais</label>
-          <input type="number" min="0" className={inputClass} value={form.participantes_final}
+          <input type="text" inputMode="numeric" className={inputClass} value={form.participantes_final === 0 ? "" : form.participantes_final}
             onChange={(e) => set("participantes_final", Number(e.target.value))} />
         </div>
         <div>
