@@ -45,7 +45,7 @@ function formatCurrency(value: number) {
 export function FinancialCard({ title, value, icon, color, subtitle }: Props) {
   const c = colorMap[color];
   return (
-    <div className={`rounded-2xl border p-6 shadow-sm ${c.bg} ${c.border}`}>
+    <div className={`rounded-2xl border p-6 shadow-sm h-full ${c.bg} ${c.border}`}>
       <div className="flex items-start justify-between">
         <div>
           <p className={`text-xs font-semibold uppercase tracking-wider ${c.title}`}>{title}</p>
