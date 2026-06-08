@@ -46,20 +46,22 @@ export async function GET(req: NextRequest) {
     type RawInsights = { spend?: string; impressions?: string; clicks?: string; cpc?: string; cpm?: string; reach?: string };
     type RawCampaign = { id: string; name: string; status: string; insights?: { data?: RawInsights[] } };
 
-    const campaigns = (data.data as RawCampaign[] ?? []).map((c) => {
-      const ins = c.insights?.data?.[0];
-      return {
-        id: c.id,
-        name: c.name,
-        status: c.status,
-        spend: parseFloat(ins?.spend ?? "0"),
-        impressions: parseInt(ins?.impressions ?? "0", 10),
-        clicks: parseInt(ins?.clicks ?? "0", 10),
-        cpc: parseFloat(ins?.cpc ?? "0"),
-        cpm: parseFloat(ins?.cpm ?? "0"),
-        reach: parseInt(ins?.reach ?? "0", 10),
-      };
-    });
+    const campaigns = (data.data as RawCampaign[] ?? [])
+      .filter((c) => c.name.toUpperCase().includes("REGIONAL"))
+      .map((c) => {
+        const ins = c.insights?.data?.[0];
+        return {
+          id: c.id,
+          name: c.name,
+          status: c.status,
+          spend: parseFloat(ins?.spend ?? "0"),
+          impressions: parseInt(ins?.impressions ?? "0", 10),
+          clicks: parseInt(ins?.clicks ?? "0", 10),
+          cpc: parseFloat(ins?.cpc ?? "0"),
+          cpm: parseFloat(ins?.cpm ?? "0"),
+          reach: parseInt(ins?.reach ?? "0", 10),
+        };
+      });
 
     const totalSpend = campaigns.reduce((sum, c) => sum + c.spend, 0);
 
