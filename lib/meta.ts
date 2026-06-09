@@ -63,7 +63,8 @@ export async function fetchMetaCampaigns(opts: FetchOpts): Promise<{
       return { campaigns: [], totalSpend: 0, error: data.error.message };
     }
 
-    const normalizedCity = opts.city ? removeAccents(opts.city) : null;
+    // Remove espaços para matching: "RIOVERDE" bate com "RIO VERDE", "CAMPOGRANDE" com "CAMPO GRANDE"
+    const normalizedCity = opts.city ? removeAccents(opts.city).replace(/\s+/g, "") : null;
 
     type RawInsights = {
       spend?: string; impressions?: string; clicks?: string;
@@ -88,7 +89,8 @@ export async function fetchMetaCampaigns(opts: FetchOpts): Promise<{
       .filter((c) => {
         const name = removeAccents(c.name);
         if (!name.includes("REGIONAL")) return false;
-        if (normalizedCity && !name.includes(normalizedCity)) return false;
+        // Compara sem espaços para "RIOVERDE" bater "RIO VERDE" na campanha Meta
+        if (normalizedCity && !name.replace(/\s+/g, "").includes(normalizedCity)) return false;
         return true;
       })
       .map((c) => {
