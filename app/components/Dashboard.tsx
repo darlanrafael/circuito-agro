@@ -153,6 +153,20 @@ export function Dashboard({ events }: Props) {
   const averageCPA          = totalTickets > 0 ? effectiveInvestment / totalTickets : 0;
   const totalBalance        = netRevenue - effectiveInvestment;
 
+  // Map event_id → period ticket counts (built from approved sales in memory, no extra fetch)
+  const salesByEvent = useMemo(() => {
+    const map = new Map<string, { individual: number; duplo: number }>();
+    if (!usingSales) return map;
+    for (const s of salesData) {
+      if (s.status === "refunded") continue;
+      const entry = map.get(s.event_id) ?? { individual: 0, duplo: 0 };
+      if (s.ticket_type === "individual") entry.individual++;
+      else if (s.ticket_type === "duplo")  entry.duplo++;
+      map.set(s.event_id, entry);
+    }
+    return map;
+  }, [usingSales, salesData]);
+
   const fmtBRL  = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
   const fmtBRL2 = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(v);
 
@@ -261,6 +275,7 @@ export function Dashboard({ events }: Props) {
             <FinancialCard
               title="Investimento em Tráfego" value={effectiveInvestment} color="gold"
               subtitle={metaLoaded ? "Meta Ads · período" : "Soma dos eventos"}
+              onRefresh={fetchMeta} isRefreshing={metaLoading}
               icon={<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>}
             />
             <FinancialCard
@@ -396,6 +411,12 @@ export function Dashboard({ events }: Props) {
                 </div>
               </div>
 
+              {usingSales && (
+                <p className="text-[10px] sm:text-xs mb-3 sm:mb-4" style={{ color: "#4b5563", fontStyle: "italic" }}>
+                  Ingressos exibidos referentes ao período selecionado
+                </p>
+              )}
+
               {grouped.length === 0 ? (
                 <p className="text-sm" style={{ textAlign: "center", padding: "40px 0", color: "#4b5563" }}>
                   Nenhum evento futuro encontrado{cityFilter !== "all" ? ` para ${cityFilter}` : ""}.
@@ -418,7 +439,14 @@ export function Dashboard({ events }: Props) {
                             {monthEvents.length} evento{monthEvents.length > 1 ? "s" : ""}
                           </span>
                         </div>
-                        <div>{monthEvents.map((ev) => <EventRow key={ev.id} event={ev} />)}</div>
+                        <div>{monthEvents.map((ev) => (
+                          <EventRow
+                            key={ev.id}
+                            event={ev}
+                            periodIndividual={usingSales ? (salesByEvent.get(ev.id)?.individual ?? 0) : undefined}
+                            periodDouble={usingSales ? (salesByEvent.get(ev.id)?.duplo ?? 0) : undefined}
+                          />
+                        ))}</div>
                       </div>
                     );
                   })}

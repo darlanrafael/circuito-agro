@@ -4,6 +4,8 @@ type Props = {
   icon: React.ReactNode;
   color: "green" | "gold" | "blue" | "red" | "gray";
   subtitle?: string;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 };
 
 const colorMap = {
@@ -21,7 +23,7 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-export function FinancialCard({ title, value, icon, color, subtitle }: Props) {
+export function FinancialCard({ title, value, icon, color, subtitle, onRefresh, isRefreshing }: Props) {
   const c = colorMap[color];
   return (
     <div
@@ -72,11 +74,40 @@ export function FinancialCard({ title, value, icon, color, subtitle }: Props) {
         {formatCurrency(value)}
       </p>
 
-      {/* Subtítulo */}
-      {subtitle && (
-        <p className="text-[9px] sm:text-[10px]" style={{ color: "#4b5563" }}>
-          {subtitle}
-        </p>
+      {/* Subtítulo + botão de refresh */}
+      {(subtitle || onRefresh) && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+          {subtitle && (
+            <p className="text-[9px] sm:text-[10px]" style={{ color: "#4b5563" }}>
+              {subtitle}
+            </p>
+          )}
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              title="Atualizar investimento Meta Ads"
+              style={{
+                background: "transparent", border: "none",
+                cursor: isRefreshing ? "not-allowed" : "pointer",
+                padding: 4, display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#4b5563", minWidth: 28, minHeight: 28, borderRadius: 4, flexShrink: 0,
+                transition: "color 0.2s",
+              }}
+              onMouseEnter={(e) => { if (!isRefreshing) (e.currentTarget as HTMLButtonElement).style.color = "#22c55e"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#4b5563"; }}
+            >
+              <svg
+                className={`h-3.5 w-3.5${isRefreshing ? " animate-spin" : ""}`}
+                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+              >
+                <polyline points="1 4 1 10 7 10" />
+                <path d="M3.51 15a9 9 0 1 0 .49-3.14" />
+              </svg>
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

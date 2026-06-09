@@ -26,14 +26,21 @@ function getBarColor(occupancy: number): string {
   return "#22c55e";
 }
 
-export function EventRow({ event }: { event: AppEvent }) {
+export function EventRow({ event, periodIndividual, periodDouble }: { event: AppEvent; periodIndividual?: number; periodDouble?: number }) {
   const [days, setDays] = useState<number>(0);
 
   useEffect(() => {
     setDays(getDaysUntil(event.date));
   }, [event.date]);
 
-  const totalPeople = event.individualTickets + event.doubleTickets * 2;
+  // Badge always uses historical totals from event table
+  const historicalPeople    = event.individualTickets + event.doubleTickets * 2;
+  const historicalOccupancy = historicalPeople / event.capacity;
+
+  // Display/bar uses period data when provided, historical otherwise
+  const displayIndividual = periodIndividual ?? event.individualTickets;
+  const displayDouble     = periodDouble     ?? event.doubleTickets;
+  const totalPeople = displayIndividual + displayDouble * 2;
   const occupancy   = totalPeople / event.capacity;
   const pct         = Math.min(100, Math.round(occupancy * 100));
   const barColor    = getBarColor(occupancy);
@@ -41,7 +48,7 @@ export function EventRow({ event }: { event: AppEvent }) {
 
   const badge: BadgeStyle = event.status === "adiado"
     ? { label: "Adiado", bg: "#1f1a0a", color: "#fbbf24", border: "#92400e" }
-    : getAutoStatus(occupancy);
+    : getAutoStatus(historicalOccupancy);
 
   const dateObj       = new Date(event.date + "T00:00:00");
   const formattedDate = dateObj.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -96,11 +103,11 @@ export function EventRow({ event }: { event: AppEvent }) {
         <div style={{ display: "flex", gap: 16, minWidth: 140 }}>
           <div style={{ textAlign: "center" }}>
             <p style={{ fontSize: 9, textTransform: "uppercase", color: "#4b5563", letterSpacing: "0.1em" }}>Individual</p>
-            <p style={{ fontSize: 16, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>{event.individualTickets}</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>{displayIndividual}</p>
           </div>
           <div style={{ textAlign: "center" }}>
             <p style={{ fontSize: 9, textTransform: "uppercase", color: "#4b5563", letterSpacing: "0.1em" }}>Duplo</p>
-            <p style={{ fontSize: 16, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>{event.doubleTickets}</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>{displayDouble}</p>
           </div>
         </div>
 
@@ -147,7 +154,7 @@ export function EventRow({ event }: { event: AppEvent }) {
             <p style={{ fontSize: 10, color: "#4b5563" }}>{daysLabel}</p>
           </div>
           <p style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>
-            IND: {event.individualTickets} · DUP: {event.doubleTickets}
+            IND: {displayIndividual} · DUP: {displayDouble}
           </p>
         </div>
 
