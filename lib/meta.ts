@@ -29,7 +29,11 @@ export async function fetchMetaCampaigns(opts: FetchOpts): Promise<{
   const ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
   const AD_ACCOUNT_ID = process.env.META_AD_ACCOUNT_ID;
 
+  console.log("[Meta] token presente:", !!ACCESS_TOKEN, "| comprimento:", ACCESS_TOKEN?.length ?? 0);
+  console.log("[Meta] ad_account_id:", AD_ACCOUNT_ID ?? "(não definido)");
+
   if (!ACCESS_TOKEN || !AD_ACCOUNT_ID) {
+    console.error("[Meta] Variáveis de ambiente não configuradas — META_ACCESS_TOKEN ou META_AD_ACCOUNT_ID ausentes");
     return { campaigns: [], totalSpend: 0, error: "not_configured" };
   }
 
@@ -56,11 +60,24 @@ export async function fetchMetaCampaigns(opts: FetchOpts): Promise<{
 
   try {
     const res = await fetch(apiUrl.toString(), { cache: "no-store" });
-    const data = await res.json();
+    console.log("[Meta] response status:", res.status, res.statusText);
 
-    if (data.error) {
-      console.error("[Meta] API error:", JSON.stringify(data.error));
-      return { campaigns: [], totalSpend: 0, error: data.error.message };
+    const rawBody = await res.text();
+    console.log("[Meta] response body (primeiros 2000 chars):", rawBody.slice(0, 2000));
+
+    let data: unknown;
+    try {
+      data = JSON.parse(rawBody);
+    } catch {
+      console.error("[Meta] Resposta não é JSON válido. Body completo:", rawBody);
+      return { campaigns: [], totalSpend: 0, error: "Resposta inválida da Meta API" };
+    }
+
+    const dataObj = data as Record<string, unknown>;
+    if (dataObj.error) {
+      console.error("[Meta] API error completo:", JSON.stringify(dataObj.error));
+      const errObj = dataObj.error as Record<string, unknown>;
+      return { campaigns: [], totalSpend: 0, error: String(errObj.message ?? "Erro desconhecido") };
     }
 
     // Remove espaços para matching: "RIOVERDE" bate com "RIO VERDE", "CAMPOGRANDE" com "CAMPO GRANDE"
@@ -75,7 +92,7 @@ export async function fetchMetaCampaigns(opts: FetchOpts): Promise<{
       insights?: { data?: RawInsights[] };
     };
 
-    const rawCampaigns = data.data as RawCampaign[] ?? [];
+    const rawCampaigns = (dataObj.data as RawCampaign[]) ?? [];
     console.log("[Meta] Raw campaigns total:", rawCampaigns.length);
     if (rawCampaigns.length > 0) {
       console.log("[Meta] Sample raw campaign:", JSON.stringify({
