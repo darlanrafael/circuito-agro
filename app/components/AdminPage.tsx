@@ -53,10 +53,17 @@ export function AdminPage() {
   }
 
   async function handleAdd(formData: Omit<AppEvent, "id">) {
+    // Gera id a partir da cidade: "Luís Eduardo" → "luiseduardo", "Rio Verde" → "rioverde"
+    const id = formData.city
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+
     const res = await fetch("/api/events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
+      body: JSON.stringify({ id, ...formData }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
