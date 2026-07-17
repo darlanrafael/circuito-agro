@@ -1,4 +1,5 @@
 import { removeAccents } from "@/lib/utils";
+import { normNS } from "@/lib/matching";
 
 const META_API_VERSION = "v21.0";
 
@@ -81,7 +82,7 @@ export async function fetchMetaCampaigns(opts: FetchOpts): Promise<{
     }
 
     // Remove espaços para matching: "RIOVERDE" bate com "RIO VERDE", "CAMPOGRANDE" com "CAMPO GRANDE"
-    const normalizedCity = opts.city ? removeAccents(opts.city).replace(/\s+/g, "") : null;
+    const normalizedCity = opts.city ? normNS(opts.city) : null;
 
     type RawInsights = {
       spend?: string; impressions?: string; clicks?: string;

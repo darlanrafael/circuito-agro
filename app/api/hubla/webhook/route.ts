@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { eventMatchesText } from "@/lib/matching";
 
 // ─── Tipos do payload Hubla ───────────────────────────────────────────────────
 
@@ -44,6 +45,7 @@ type AppEvent = {
   id: string;
   city: string;
   utm_nomenclatura: string;
+  utm_aliases: string[];
   individualTickets: number;
   doubleTickets: number;
   faturamento_bruto: number;
@@ -70,7 +72,7 @@ function isDouble(offerName: string): boolean {
 async function findEvent(offerName: string): Promise<AppEvent | null> {
   const { data: events, error } = await supabase
     .from("events")
-    .select("id, city, utm_nomenclatura, individualTickets, doubleTickets, faturamento_bruto, faturamento_liquido");
+    .select("id, city, utm_nomenclatura, utm_aliases, individualTickets, doubleTickets, faturamento_bruto, faturamento_liquido");
 
   if (error || !events) {
     console.error("[Hubla] Erro ao buscar eventos:", error);
@@ -80,25 +82,11 @@ async function findEvent(offerName: string): Promise<AppEvent | null> {
   const normalizedOffer = removeAccents(offerName);
   console.log("[Hubla] Oferta normalizada:", normalizedOffer);
 
+  // Casamento unificado: UTM principal, aliases ou palavras da cidade (ver lib/matching)
   for (const ev of events as AppEvent[]) {
-    // a. Cada palavra do utm_nomenclatura aparece na oferta normalizada
-    if (ev.utm_nomenclatura) {
-      const utmWords = removeAccents(ev.utm_nomenclatura).split(" ").filter(Boolean);
-      if (utmWords.length > 0 && utmWords.every((w) => normalizedOffer.includes(w))) {
-        console.log("[Hubla] Match por UTM:", ev.utm_nomenclatura, "→", ev.city);
-        return ev;
-      }
-    }
-  }
-
-  for (const ev of events as AppEvent[]) {
-    // b. Cada palavra do nome da cidade aparece na oferta normalizada
-    if (ev.city) {
-      const cityWords = removeAccents(ev.city).split(" ").filter(Boolean);
-      if (cityWords.length > 0 && cityWords.every((w) => normalizedOffer.includes(w))) {
-        console.log("[Hubla] Match por cidade:", ev.city);
-        return ev;
-      }
+    if (eventMatchesText(ev, offerName)) {
+      console.log("[Hubla] Match:", ev.city, "(utm:", ev.utm_nomenclatura, "aliases:", JSON.stringify(ev.utm_aliases ?? []), ")");
+      return ev;
     }
   }
 
