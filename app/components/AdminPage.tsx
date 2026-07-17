@@ -34,7 +34,7 @@ export function AdminPage() {
     setLoading(true);
     setFetchError("");
     try {
-      const res = await fetch("/api/events");
+      const res = await fetch("/api/events?all=1");
       if (!res.ok) throw new Error("Falha ao carregar eventos.");
       const data = await res.json();
       setEvents(data.events ?? data);
@@ -89,20 +89,24 @@ export function AdminPage() {
     showSuccess("Evento atualizado com sucesso!");
   }
 
-  async function handleDelete(id: string) {
+  async function handleArchive(id: string, archived: boolean) {
     setDeleteLoading(true);
     try {
+      const ev = events.find((e) => e.id === id);
       const res = await fetch("/api/events", {
-        method: "DELETE",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ ...ev, id, is_archived: archived }),
       });
-      if (!res.ok) throw new Error("Erro ao excluir evento.");
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b.error ?? "Erro ao arquivar evento.");
+      }
       await loadEvents();
       setDeleteId(null);
-      showSuccess("Evento excluído.");
+      showSuccess(archived ? "Evento arquivado." : "Evento restaurado.");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Erro ao excluir.");
+      alert(err instanceof Error ? err.message : "Erro ao arquivar.");
     } finally {
       setDeleteLoading(false);
     }
@@ -110,6 +114,8 @@ export function AdminPage() {
 
   const editingEvent = editingId !== null ? events.find((e) => e.id === String(editingId)) : undefined;
   const deleteEvent  = deleteId  !== null ? events.find((e) => e.id === String(deleteId))  : undefined;
+  const ativos     = events.filter((e) => !e.is_archived);
+  const arquivados = events.filter((e) => e.is_archived);
 
   return (
     <div style={{ minHeight: "100vh", background: "#0d0d0d" }}>
@@ -163,7 +169,7 @@ export function AdminPage() {
         {/* Lista de eventos */}
         <section>
           <h2 style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.2em", color: "#4b5563", marginBottom: 16 }}>
-            Eventos cadastrados {!loading && `(${events.length})`}
+            Eventos cadastrados {!loading && `(${ativos.length})`}
           </h2>
 
           {loading && (
@@ -181,13 +187,13 @@ export function AdminPage() {
             </div>
           )}
 
-          {!loading && !fetchError && events.length === 0 && (
+          {!loading && !fetchError && ativos.length === 0 && (
             <div style={{ textAlign: "center", padding: "48px 0", color: "#4b5563" }}>
               Nenhum evento cadastrado.
             </div>
           )}
 
-          {!loading && events.map((event) => (
+          {!loading && ativos.map((event) => (
             <div key={event.id} style={{ marginBottom: 12, borderRadius: 14, border: "1px solid #252525", background: "#161616", overflow: "hidden" }}>
 
               {/* ── Desktop row (md+) ── */}
@@ -234,8 +240,8 @@ export function AdminPage() {
                     onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#ef4444"; (e.currentTarget as HTMLButtonElement).style.color = "#ef4444"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#252525"; (e.currentTarget as HTMLButtonElement).style.color = "#6b7280"; }}
                   >
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    Excluir
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 100-4h14a2 2 0 100 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                    Arquivar
                   </button>
                 </div>
               </div>
@@ -290,8 +296,8 @@ export function AdminPage() {
                     onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#ef4444"; (e.currentTarget as HTMLButtonElement).style.color = "#ef4444"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#252525"; (e.currentTarget as HTMLButtonElement).style.color = "#6b7280"; }}
                   >
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    Excluir
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 100-4h14a2 2 0 100 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                    Arquivar
                   </button>
                 </div>
               </div>
@@ -313,39 +319,70 @@ export function AdminPage() {
             </div>
           ))}
         </section>
+
+        {/* Seção de arquivados */}
+        {!loading && arquivados.length > 0 && (
+          <section style={{ marginTop: 32 }}>
+            <h2 style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.2em", color: "#4b5563", marginBottom: 16 }}>
+              Arquivados ({arquivados.length})
+            </h2>
+            {arquivados.map((event) => (
+              <div key={event.id} className="flex items-center gap-3 p-3" style={{ marginBottom: 8, borderRadius: 12, border: "1px solid #1f1f1f", background: "#111", opacity: 0.75 }}>
+                <StateFlagSVG
+                  state={event.state} size={24}
+                  bandeira_tipo={event.bandeira_tipo}
+                  bandeira_url={event.bandeira_url}
+                  bandeira_custom={event.bandeira_custom}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontWeight: 600, color: "#9ca3af", fontSize: 14 }}>{event.city}</span>
+                  <span style={{ color: "#4b5563", fontSize: 12 }}> · {event.state} · {new Date(event.date + "T00:00:00").toLocaleDateString("pt-BR")}</span>
+                </div>
+                <button
+                  onClick={() => handleArchive(event.id, false)}
+                  disabled={deleteLoading}
+                  style={{ display: "flex", alignItems: "center", gap: 6, borderRadius: 8, border: "1px solid #166534", background: "transparent", color: "#22c55e", padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 7v6h6M3 13a9 9 0 1 0 3-7.7L3 8" /></svg>
+                  Restaurar
+                </button>
+              </div>
+            ))}
+          </section>
+        )}
       </div>
 
-      {/* Modal de confirmação de exclusão */}
+      {/* Modal de confirmação de arquivamento */}
       {deleteId !== null && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
           <div style={{ background: "#161616", borderRadius: 20, boxShadow: "0 25px 50px rgba(0,0,0,0.5)", border: "1px solid #252525", padding: 24, maxWidth: 360, width: "100%" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
-              <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 20, background: "#2d0f0f", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg className="h-5 w-5" style={{ color: "#ef4444" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 20, background: "#292100", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg className="h-5 w-5" style={{ color: "#eab308" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 100-4h14a2 2 0 100 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                 </svg>
               </div>
               <div style={{ flex: 1 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: "white" }}>Excluir evento</h3>
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: "white" }}>Arquivar evento</h3>
                 <p style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
-                  Tem certeza que deseja excluir o evento de{" "}
+                  Deseja arquivar o evento de{" "}
                   <strong style={{ color: "#9ca3af" }}>{deleteEvent?.city}</strong>?
-                  {" "}Esta ação não pode ser desfeita.
+                  {" "}Ele sairá das telas mas pode ser restaurado a qualquer momento.
                 </p>
               </div>
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
               <button
-                onClick={() => handleDelete(deleteId)}
+                onClick={() => handleArchive(deleteId, true)}
                 disabled={deleteLoading}
                 style={{
-                  flex: 1, borderRadius: 10, background: "#ef4444", color: "white",
+                  flex: 1, borderRadius: 10, background: "#eab308", color: "#0d0d0d",
                   fontWeight: 700, padding: "10px 0", fontSize: 13, border: "none",
                   cursor: deleteLoading ? "not-allowed" : "pointer",
                   opacity: deleteLoading ? 0.6 : 1,
                 }}
               >
-                {deleteLoading ? "Excluindo..." : "Sim, excluir"}
+                {deleteLoading ? "Arquivando..." : "Sim, arquivar"}
               </button>
               <button
                 onClick={() => setDeleteId(null)}

@@ -8,10 +8,11 @@ function fmtBRL(value: number) {
   }).format(value);
 }
 
-export function EventRealizadoRow({ event }: { event: AppEvent }) {
+export function EventRealizadoRow({ event, investment }: { event: AppEvent; investment?: number }) {
+  const invest  = investment ?? event.trafficInvestment;
   const pct     = Math.min(100, Math.round((event.participantes_final / event.capacity) * 100));
-  const roas    = event.trafficInvestment > 0 ? event.faturamento_bruto / event.trafficInvestment : 0;
-  const hasData = event.participantes_final > 0 || event.faturamento_bruto > 0;
+  const roas    = invest > 0 ? event.faturamento_bruto / invest : 0;
+  const hasData = event.participantes_final > 0 || event.faturamento_bruto > 0 || invest > 0;
 
   const dateObj       = new Date(event.date + "T00:00:00");
   const formattedDate = dateObj.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -89,7 +90,7 @@ export function EventRealizadoRow({ event }: { event: AppEvent }) {
           <div>
             <p style={{ fontSize: 9, textTransform: "uppercase", color: "#4b5563", letterSpacing: "0.1em" }}>Investimento</p>
             <p style={{ fontSize: 13, fontWeight: 600, color: "#eab308", fontVariantNumeric: "tabular-nums" }}>
-              {fmtBRL(event.trafficInvestment)}
+              {hasData ? fmtBRL(invest) : "—"}
             </p>
           </div>
           <div>

@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import type { AppEvent, EventStatus, BandeiraTipo } from "../types";
 import { StateFlagSVG } from "./StateFlagSVG";
+import { UtmTagsInput } from "./UtmTagsInput";
+import { EventCostsEditor } from "./EventCostsEditor";
 
 function UrlPreviewInForm({ url }: { url: string }) {
   const [failed, setFailed] = useState(false);
@@ -60,7 +62,7 @@ const EMPTY: FormData = {
   faturamento_bruto: 0, faturamento_liquido: 0,
   stateName: "", status: "em_andamento",
   bandeira_tipo: "auto", bandeira_url: "", bandeira_custom: "",
-  utm_nomenclatura: "",
+  utm_nomenclatura: "", utm_aliases: [], is_archived: false,
 };
 
 function formatBR(value: number): string {
@@ -254,6 +256,15 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
         </div>
       </div>
 
+      {/* UTMs adicionais para atribuição */}
+      <div>
+        <label style={labelStyle}>UTMs adicionais para atribuição</label>
+        <UtmTagsInput value={form.utm_aliases ?? []} onChange={(v) => set("utm_aliases", v)} />
+        <p style={{ marginTop: 4, fontSize: 11, color: "#4b5563" }}>
+          Além da nomenclatura principal, adicione códigos usados nos anúncios (ex.: EM, LEM). Vendas e investimento casam por qualquer um deles.
+        </p>
+      </div>
+
       {/* Bandeira */}
       <div style={{ borderRadius: 12, border: "1px solid #252525", background: "#111", padding: 16 }}>
         <label style={{ ...labelStyle, marginBottom: 12 }}>Bandeira / Imagem do evento</label>
@@ -322,6 +333,11 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
           <span style={{ fontSize: 13, color: "#6b7280" }}>{form.city || "Cidade"} · {form.state}</span>
         </div>
       </div>
+
+      {/* Custos operacionais (só na edição, quando já existe id) */}
+      {isEdit && initialData?.id && (
+        <EventCostsEditor eventId={String(initialData.id)} />
+      )}
 
       {/* Ações */}
       <div style={{ display: "flex", gap: 12, paddingTop: 8 }}>

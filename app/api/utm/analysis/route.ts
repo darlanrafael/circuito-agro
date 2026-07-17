@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { fetchMetaCampaigns } from "@/lib/meta";
-import { removeAccents } from "@/lib/utils";
+import { eventMatchesText, spendForEvent, normNS } from "@/lib/matching";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +10,7 @@ type EventRow = {
   city: string;
   state: string;
   utm_nomenclatura: string;
+  utm_aliases: string[];
   individualTickets: number;
   doubleTickets: number;
 };
@@ -111,33 +112,8 @@ function parseBrasiliaDateStr(s: string): Date {
   return new Date(Date.UTC(y, m - 1, d));
 }
 
-// ── Normalização para matching ───────────────────────────────────────────────
-// Remove acentos, substitui não-alfanuméricos por espaço E remove os espaços.
-// Isso permite "RIOVERDE" bater com "RIO VERDE" e vice-versa.
-function normNS(s: string): string {
-  return removeAccents(s).replace(/\s+/g, "");
-}
-
-// ── Atribuição de venda ──────────────────────────────────────────────────────
-// Retorna true se o offer_name indica claramente que a venda veio da campanha do evento.
-function isTracked(offerName: string, city: string, utmNomenclatura: string): boolean {
-  if (!offerName) return false;
-
-  const normOfferNS  = normNS(offerName);
-  const normUtmNS    = normNS(utmNomenclatura || "");
-
-  // Primeira checagem: UTM nomenclatura (sem espaços) presente no offer (sem espaços)
-  if (normUtmNS && normOfferNS.includes(normUtmNS)) return true;
-
-  // Fallback: palavras significativas da cidade presentes no offer
-  const cityWords = removeAccents(city).split(" ").filter((w) => w.length > 2);
-  if (cityWords.length === 0) return false;
-  const normOffer = removeAccents(offerName);
-  const minMatch  = Math.min(cityWords.length, 2);
-  return cityWords.filter((w) => normOffer.includes(w)).length >= minMatch;
-}
-
 // ── Handler principal ────────────────────────────────────────────────────────
+// Casamento venda/investimento ↔ evento: ver lib/matching (UTM + aliases + cidade).
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -152,7 +128,7 @@ export async function GET(req: NextRequest) {
   // ── 1. Eventos ──────────────────────────────────────────────────────────────
   const { data: eventsData, error: evError } = await supabase
     .from("events")
-    .select("id, city, state, utm_nomenclatura, individualTickets, doubleTickets")
+    .select("id, city, state, utm_nomenclatura, utm_aliases, individualTickets, doubleTickets")
     .order("city");
 
   if (evError || !eventsData) {
@@ -161,9 +137,9 @@ export async function GET(req: NextRequest) {
 
   const events = eventsData as EventRow[];
 
-  // Filtra por cidade com normalização sem espaços: "RIOVERDE" bate com "RIO VERDE" no DB
+  // Filtra por cidade: casa por UTM/alias/cidade, ou igualdade exata da nomenclatura
   const targetEvents = cityParam
-    ? events.filter((e) => normNS(e.utm_nomenclatura) === normNS(cityParam))
+    ? events.filter((e) => eventMatchesText(e, cityParam) || normNS(e.utm_nomenclatura) === normNS(cityParam))
     : events;
 
   console.log("[UTM] Eventos no DB:", events.map((e) => `${e.city}(utm=${e.utm_nomenclatura})`).join(", "));
@@ -239,15 +215,11 @@ export async function GET(req: NextRequest) {
 
   const metaCampaigns = metaResult.campaigns;
 
-  // Log de matching por evento
+  // Log de matching por evento (UTM + aliases + cidade via lib/matching)
   for (const ev of targetEvents) {
-    const utmNS  = normNS(ev.utm_nomenclatura || "");
-    const matched = metaCampaigns.filter((c) => normNS(c.name).includes(utmNS));
-    console.log("[UTM] campanhas após filtro de cidade %s (utm=%s normNS=%s): %d campanhas | spend=%.2f",
-      ev.city, ev.utm_nomenclatura, utmNS,
-      matched.length,
-      matched.reduce((s, c) => s + c.spend, 0),
-    );
+    const evSpend = spendForEvent(ev, metaCampaigns);
+    console.log("[UTM] investimento casado p/ %s (utm=%s aliases=%s): spend=%.2f",
+      ev.city, ev.utm_nomenclatura, JSON.stringify(ev.utm_aliases ?? []), evSpend);
   }
 
   // ── 6. Cálculos por evento ──────────────────────────────────────────────────
@@ -264,7 +236,7 @@ export async function GET(req: NextRequest) {
     let buggedCount = 0, buggedRevenue = 0;
 
     for (const sale of evSales) {
-      if (isTracked(sale.offer_name || "", ev.city, ev.utm_nomenclatura)) {
+      if (eventMatchesText(ev, sale.offer_name || "")) {
         trackedCount++;
         trackedRevenue += sale.faturamento_bruto || 0;
       } else {
@@ -276,13 +248,8 @@ export async function GET(req: NextRequest) {
     const totalEventTickets = ev.individualTickets + ev.doubleTickets;
     const unknownCount      = Math.max(0, totalEventTickets - allEvCount);
 
-    // Investimento Meta: compara sem espaços para "RIOVERDE" bater "RIO VERDE"
-    const utmNS     = normNS(ev.utm_nomenclatura || "");
-    const evInvested = utmNS
-      ? metaCampaigns
-          .filter((c) => normNS(c.name).includes(utmNS))
-          .reduce((sum, c) => sum + c.spend, 0)
-      : 0;
+    // Investimento Meta: casa por UTM principal, aliases ou nome da cidade
+    const evInvested = spendForEvent(ev, metaCampaigns);
 
     const evRevenue   = trackedRevenue + buggedRevenue;
     const totalTickets = trackedCount + buggedCount + unknownCount;

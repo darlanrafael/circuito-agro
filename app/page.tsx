@@ -9,6 +9,7 @@ export default async function Home() {
   const { data } = await supabase
     .from("events")
     .select("*")
+    .eq("is_archived", false)
     .order("date", { ascending: true });
 
   const events = (data ?? []) as AppEvent[];

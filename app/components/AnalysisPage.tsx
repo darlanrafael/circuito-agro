@@ -30,17 +30,9 @@ const DATE_PRESETS: Record<Exclude<DateFilter, "custom">, string> = {
   today: "today", yesterday: "yesterday", "7days": "last_7d", month: "this_month",
 };
 
-const QUICK_FILTERS = [
-  { label: "Todas (REGIONAL)", value: "" },
-  { label: "Cuiabá",           value: "CUIABA" },
-  { label: "Rio Verde",        value: "RIOVERDE" },
-  { label: "Cascavel",         value: "CASCAVEL" },
-  { label: "Uberlândia",       value: "UBERLANDIA" },
-  { label: "Campo Grande",     value: "CAMPOGRANDE" },
-  { label: "L.E. Magalhães",   value: "LUISEDUARDO" },
-  { label: "Ribeirão Preto",   value: "RIBEIRAO" },
-  { label: "Sorriso",          value: "SORRISO" },
-];
+type QuickFilter = { label: string; value: string };
+
+const DEFAULT_QUICK_FILTERS: QuickFilter[] = [{ label: "Todas (REGIONAL)", value: "" }];
 
 function fmtDec(v: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -58,6 +50,20 @@ export function AnalysisPage() {
   const [data, setData]                 = useState<ApiResponse | null>(null);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState<string | null>(null);
+  const [quickFilters, setQuickFilters] = useState<QuickFilter[]>(DEFAULT_QUICK_FILTERS);
+
+  useEffect(() => {
+    fetch("/api/events")
+      .then((r) => r.json())
+      .then((evs: { city: string; utm_nomenclatura: string }[]) => {
+        if (!Array.isArray(evs)) return;
+        setQuickFilters([
+          ...DEFAULT_QUICK_FILTERS,
+          ...evs.map((e) => ({ label: e.city.trim(), value: e.utm_nomenclatura })),
+        ]);
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null);
@@ -97,7 +103,7 @@ export function AnalysisPage() {
 
   const campaigns   = data?.campaigns ?? [];
   const attribution = data?.attribution;
-  const activeLabel = QUICK_FILTERS.find((f) => f.value === selectedCity)?.label ?? (selectedCity || "REGIONAL");
+  const activeLabel = quickFilters.find((f) => f.value === selectedCity)?.label ?? (selectedCity || "REGIONAL");
 
   // ROAS card
   const roasVal      = data?.roi ?? 0;
@@ -217,7 +223,7 @@ export function AnalysisPage() {
 
           {/* Pills */}
           <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3">
-            {QUICK_FILTERS.map((qf) => (
+            {quickFilters.map((qf) => (
               <button
                 key={qf.value}
                 onClick={() => applyFilter(qf.value || "REGIONAL")}

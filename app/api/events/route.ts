@@ -1,12 +1,12 @@
 import { supabase } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const includeArchived = new URL(req.url).searchParams.get('all') === '1'
   try {
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .order('date', { ascending: true })
+    let q = supabase.from('events').select('*').order('date', { ascending: true })
+    if (!includeArchived) q = q.eq('is_archived', false)
+    const { data, error } = await q
     if (error) throw error
     return NextResponse.json(data)
   } catch (error) {

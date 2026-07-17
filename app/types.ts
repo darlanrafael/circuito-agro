@@ -19,7 +19,11 @@ export type AppEvent = {
   bandeira_url: string;
   bandeira_custom: string;
   utm_nomenclatura: string;
+  utm_aliases: string[];
+  is_archived: boolean;
 };
+
+export type { EventCost } from "@/lib/finance";
 
 export type SessionUser = {
   email: string;
