@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import type { AppEvent, EventStatus, BandeiraTipo } from "../types";
 import { StateFlagSVG } from "./StateFlagSVG";
 import { UtmTagsInput } from "./UtmTagsInput";
+import { EventCostsEditor } from "./EventCostsEditor";
 
 function UrlPreviewInForm({ url }: { url: string }) {
   const [failed, setFailed] = useState(false);
@@ -332,6 +333,11 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
           <span style={{ fontSize: 13, color: "#6b7280" }}>{form.city || "Cidade"} · {form.state}</span>
         </div>
       </div>
+
+      {/* Custos operacionais (só na edição, quando já existe id) */}
+      {isEdit && initialData?.id && (
+        <EventCostsEditor eventId={String(initialData.id)} />
+      )}
 
       {/* Ações */}
       <div style={{ display: "flex", gap: 12, paddingTop: 8 }}>
