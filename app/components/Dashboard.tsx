@@ -6,6 +6,7 @@ import { FinancialCard } from "./FinancialCard";
 import { IndicatorCard } from "./IndicatorCard";
 import { EventRow } from "./EventRow";
 import { EventRealizadoRow } from "./EventRealizadoRow";
+import { spendForEvent } from "@/lib/matching";
 import type { AppEvent } from "../types";
 
 type Props = { events: AppEvent[] };
@@ -169,9 +170,6 @@ export function Dashboard({ events }: Props) {
 
   const fmtBRL  = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
   const fmtBRL2 = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(v);
-
-  // suppress unused variable warning (metaCampaigns fetched but displayed via totalSpend only)
-  void metaCampaigns;
 
   const sectionLabel: React.CSSProperties = {
     fontSize: 9, fontWeight: 700, textTransform: "uppercase",
@@ -470,7 +468,7 @@ export function Dashboard({ events }: Props) {
                 </p>
               </div>
             ) : (
-              <div>{realizadosFiltrados.map((ev) => <EventRealizadoRow key={ev.id} event={ev} />)}</div>
+              <div>{realizadosFiltrados.map((ev) => <EventRealizadoRow key={ev.id} event={ev} investment={spendForEvent(ev, metaCampaigns)} />)}</div>
             )
           )}
         </section>
