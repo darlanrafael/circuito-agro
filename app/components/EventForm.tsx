@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import type { AppEvent, EventStatus, BandeiraTipo } from "../types";
 import { StateFlagSVG } from "./StateFlagSVG";
+import { UtmTagsInput } from "./UtmTagsInput";
 
 function UrlPreviewInForm({ url }: { url: string }) {
   const [failed, setFailed] = useState(false);
@@ -252,6 +253,15 @@ export function EventForm({ initialData, onSubmit, onCancel, isEdit }: Props) {
           <input style={inputStyle} placeholder="Ex: CUIABA" value={form.utm_nomenclatura}
             onChange={(e) => set("utm_nomenclatura", e.target.value.toUpperCase())} />
         </div>
+      </div>
+
+      {/* UTMs adicionais para atribuição */}
+      <div>
+        <label style={labelStyle}>UTMs adicionais para atribuição</label>
+        <UtmTagsInput value={form.utm_aliases ?? []} onChange={(v) => set("utm_aliases", v)} />
+        <p style={{ marginTop: 4, fontSize: 11, color: "#4b5563" }}>
+          Além da nomenclatura principal, adicione códigos usados nos anúncios (ex.: EM, LEM). Vendas e investimento casam por qualquer um deles.
+        </p>
       </div>
 
       {/* Bandeira */}
