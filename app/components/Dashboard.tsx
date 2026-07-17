@@ -28,7 +28,8 @@ type MetaCampaign = {
 
 function getMetaParams(dateFilter: DateFilter, dateFrom: string, dateTo: string, city?: string): URLSearchParams {
   const p = new URLSearchParams();
-  if (dateFilter === "today")         p.set("date_preset", "today");
+  if (dateFilter === "all")           p.set("date_preset", "maximum");
+  else if (dateFilter === "today")         p.set("date_preset", "today");
   else if (dateFilter === "yesterday") p.set("date_preset", "yesterday");
   else if (dateFilter === "7days")     p.set("date_preset", "last_7d");
   else if (dateFilter === "month")     p.set("date_preset", "this_month");
@@ -238,6 +239,7 @@ export function Dashboard({ events }: Props) {
               style={{ background: "#161616", borderRadius: 14, border: "1px solid #1f1f1f" }}
             >
               {([
+                ["all",       "Todo o período"],
                 ["today",     "Hoje"],
                 ["yesterday", "Ontem"],
                 ["7days",     "7 dias"],
