@@ -60,7 +60,7 @@ const EMPTY: FormData = {
   faturamento_bruto: 0, faturamento_liquido: 0,
   stateName: "", status: "em_andamento",
   bandeira_tipo: "auto", bandeira_url: "", bandeira_custom: "",
-  utm_nomenclatura: "",
+  utm_nomenclatura: "", utm_aliases: [], is_archived: false,
 };
 
 function formatBR(value: number): string {
