@@ -10,9 +10,13 @@ function fmtBRL(value: number) {
 
 export function EventRealizadoRow({ event, investment }: { event: AppEvent; investment?: number }) {
   const invest  = investment ?? event.trafficInvestment;
-  const pct     = Math.min(100, Math.round((event.participantes_final / event.capacity) * 100));
+  // Participantes: usa o valor manual (participantes_final) se preenchido; senão deriva dos ingressos (duplo = 2 pessoas)
+  const participantes = event.participantes_final > 0
+    ? event.participantes_final
+    : event.individualTickets + event.doubleTickets * 2;
+  const pct     = Math.min(100, Math.round((participantes / event.capacity) * 100));
   const roas    = invest > 0 ? event.faturamento_bruto / invest : 0;
-  const hasData = event.participantes_final > 0 || event.faturamento_bruto > 0 || invest > 0;
+  const hasData = participantes > 0 || event.faturamento_bruto > 0 || invest > 0;
 
   const dateObj       = new Date(event.date + "T00:00:00");
   const formattedDate = dateObj.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -75,7 +79,7 @@ export function EventRealizadoRow({ event, investment }: { event: AppEvent; inve
         <div style={{ flexShrink: 0 }}>
           <p style={{ fontSize: 9, textTransform: "uppercase", color: "#4b5563", letterSpacing: "0.1em" }}>Participantes</p>
           <p style={{ fontSize: 18, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>
-            {hasData ? event.participantes_final.toLocaleString("pt-BR") : "—"}
+            {hasData ? participantes.toLocaleString("pt-BR") : "—"}
           </p>
         </div>
 
@@ -104,7 +108,7 @@ export function EventRealizadoRow({ event, investment }: { event: AppEvent; inve
         {/* Barra de ocupação */}
         <div style={{ flex: 1, minWidth: 120 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-            <span style={{ fontSize: 10, color: "#4b5563" }}>{event.participantes_final} / {event.capacity}</span>
+            <span style={{ fontSize: 10, color: "#4b5563" }}>{participantes} / {event.capacity}</span>
             <span style={{ fontSize: 10, fontWeight: 600, color: "#6b7280" }}>{pct}%</span>
           </div>
           <div style={{ height: 4, background: "#1f1f1f", borderRadius: 2, overflow: "hidden" }}>
@@ -132,7 +136,7 @@ export function EventRealizadoRow({ event, investment }: { event: AppEvent; inve
           <div>
             <p style={{ fontSize: 9, textTransform: "uppercase", color: "#4b5563", letterSpacing: "0.1em", marginBottom: 2 }}>Participantes</p>
             <p style={{ fontSize: 14, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>
-              {hasData ? event.participantes_final.toLocaleString("pt-BR") : "—"}
+              {hasData ? participantes.toLocaleString("pt-BR") : "—"}
             </p>
           </div>
           <div>
@@ -155,7 +159,7 @@ export function EventRealizadoRow({ event, investment }: { event: AppEvent; inve
             <div className="progress-bar" style={{ height: "100%", width: `${pct}%`, background: isCancelled ? "#374151" : "#22c55e", borderRadius: 2 }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 10, color: "#4b5563" }}>{event.participantes_final} / {event.capacity}</span>
+            <span style={{ fontSize: 10, color: "#4b5563" }}>{participantes} / {event.capacity}</span>
             <span style={{ fontSize: 10, fontWeight: 600, color: "#6b7280" }}>{pct}%</span>
           </div>
         </div>

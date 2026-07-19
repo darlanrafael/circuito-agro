@@ -80,6 +80,7 @@ export function Dashboard({ events }: Props) {
   const [metaError, setMetaError]   = useState<string | null>(null);
   const [metaConfigured, setMetaConfigured] = useState(true);
   const [costsTotal, setCostsTotal] = useState(0);
+  const [allTimeMeta, setAllTimeMeta] = useState<MetaCampaign[]>([]);
 
   const cities      = useMemo(() => ["all", ...Array.from(new Set(events.map((e) => e.city)))], [events]);
   const proximos    = useMemo(() => events.filter((e) => !isRealizadoTab(e)), [events]);
@@ -135,6 +136,14 @@ export function Dashboard({ events }: Props) {
 
   useEffect(() => { fetchMeta(); }, [fetchMeta]);
 
+  // Investimento all-time (preset maximum) para os eventos REALIZADOS — independente do período
+  useEffect(() => {
+    fetch(`/api/meta/campaigns?date_preset=maximum`)
+      .then((r) => r.json())
+      .then((d) => { if (d?.campaigns) setAllTimeMeta(d.campaigns); })
+      .catch(() => {});
+  }, []);
+
   // Custos operacionais dos eventos filtrados (por evento, all-time)
   useEffect(() => {
     const ids = filteredEventIds ? filteredEventIds.split(",") : [];
@@ -170,6 +179,8 @@ export function Dashboard({ events }: Props) {
   const averageCPA          = totalTickets > 0 ? investTotal / totalTickets : 0;
   const totalBalance        = netRevenue - investTotal;
   const roiReal             = realRoi(netRevenue, investTotal);
+  // metaCampaigns é buscado junto com o totalSpend, mas o topo usa só o total e os realizados usam allTimeMeta
+  void metaCampaigns;
 
   // Map event_id → period ticket counts (built from approved sales in memory, no extra fetch)
   const salesByEvent = useMemo(() => {
@@ -491,7 +502,7 @@ export function Dashboard({ events }: Props) {
                 </p>
               </div>
             ) : (
-              <div>{realizadosFiltrados.map((ev) => <EventRealizadoRow key={ev.id} event={ev} investment={spendForEvent(ev, metaCampaigns)} />)}</div>
+              <div>{realizadosFiltrados.map((ev) => <EventRealizadoRow key={ev.id} event={ev} investment={spendForEvent(ev, allTimeMeta)} />)}</div>
             )
           )}
         </section>
