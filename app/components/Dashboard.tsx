@@ -175,7 +175,10 @@ export function Dashboard({ events }: Props) {
 
   const metaLoaded          = metaConfigured && !metaLoading && !metaError;
   const effectiveInvestment = metaLoaded ? metaTotalSpend : trafficInvestment;
-  const investTotal         = totalInvestment(effectiveInvestment, [{ valor: costsTotal }]);
+  // Custos são all-time (sem data). Só entram no total quando o período é "Todo o período";
+  // em filtros de período (Hoje, Ontem...) o investimento é só o tráfego Meta daquele período.
+  const effectiveCosts      = dateFilter === "all" ? costsTotal : 0;
+  const investTotal         = totalInvestment(effectiveInvestment, [{ valor: effectiveCosts }]);
   const averageCPA          = totalTickets > 0 ? investTotal / totalTickets : 0;
   const totalBalance        = netRevenue - investTotal;
   const roiReal             = realRoi(netRevenue, investTotal);
@@ -298,12 +301,17 @@ export function Dashboard({ events }: Props) {
         {/* Cards financeiros */}
         <section className="mb-5 sm:mb-6">
           <h2 style={{ ...sectionLabel, marginBottom: 8 }}>Financeiro</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-2 lg:gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-1.5 sm:gap-2 lg:gap-3">
             <FinancialCard
-              title="Investimento Total" value={investTotal} color="gold"
-              subtitle={`Tráfego ${fmtBRL(effectiveInvestment)} · Custos ${fmtBRL(costsTotal)}`}
+              title="Investimento em Tráfego" value={effectiveInvestment} color="gold"
+              subtitle={metaLoaded ? "Meta Ads · período" : "Soma dos eventos"}
               onRefresh={fetchMeta} isRefreshing={metaLoading}
               icon={<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>}
+            />
+            <FinancialCard
+              title="Custos do Evento" value={costsTotal} color="gray"
+              subtitle="Operacional · total do evento"
+              icon={<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2m-2 0h-4m-6 0H3m2 0h4M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 8v-4a1 1 0 011-1h2a1 1 0 011 1v4" /></svg>}
             />
             <FinancialCard
               title="Faturamento Bruto" value={grossRevenue} color="blue"
@@ -361,7 +369,9 @@ export function Dashboard({ events }: Props) {
               icon={<svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>} />
           </div>
           <p className="text-[10px] sm:text-[11px] mt-2" style={{ color: "#4b5563", fontStyle: "italic" }}>
-            ROI Real e Balanço já descontam os custos operacionais. Custos são totais do evento (independente do período).
+            {dateFilter === "all"
+              ? "Balanço e ROI Real descontam tráfego + custos operacionais do evento."
+              : "Custos do evento são totais (all-time) e entram no Balanço/ROI Real apenas em “Todo o período”."}
           </p>
         </section>
 
