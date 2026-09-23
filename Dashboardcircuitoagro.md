@@ -218,7 +218,7 @@ Venda recebida da Hubla que **não casou com nenhum evento**. Antes ela era desc
 | `received_at` | `timestamptz` | Quando chegou |
 | `resolved_at` / `resolved_event_id` | `timestamptz` / `text` | Preenchidos quando a venda for importada para um evento |
 
-Migração: `supabase/migrations/2026-09-23_unmatched_sales.sql`. **Enquanto ela não rodar**, o insert falha, o erro é logado e o webhook volta ao comportamento antigo (descarta) — sem quebrar o recebimento.
+Migração: `supabase/migrations/2026-09-23_unmatched_sales.sql`, **rodada em 23/09/2026**.
 
 **Reprocessamento ainda é manual** (não há tela nem rota). As linhas pendentes são `resolved_at is null`.
 
@@ -472,7 +472,7 @@ Requer `.env.local` preenchido para Supabase (obrigatório) e Meta (opcional —
 - Duas faturas de R$ 294,00 (`2b4c5b15…`, `3e525ca3…`) têm `Itens na fatura = 2` - order bump com um segundo ingresso. Cada uma virou **2 linhas** em `sales`: R$ 197 + R$ 97, líquido rateado. A linha extra usa o id da fatura com sufixo `-bump`.
 
 **Pontos ainda abertos:**
-1. ✅ **Corrigido em 23/09/2026** (branch `fix/vendas-orfas-webhook`): a venda órfã agora é gravada em `unmatched_sales` (§5.5) em vez de descartada, tanto na compra quanto no reembolso. A extração do payload virou função pura testada (`lib/hubla.ts`, `parseHublaSale`). **Falta rodar a migração** e **falta a tela de reprocessamento** — hoje importar uma órfã ainda é trabalho manual.
+1. ✅ **Corrigido em 23/09/2026** (branch `fix/vendas-orfas-webhook`): a venda órfã agora é gravada em `unmatched_sales` (§5.5) em vez de descartada, tanto na compra quanto no reembolso. A extração do payload virou função pura testada (`lib/hubla.ts`, `parseHublaSale`). Migração rodada em 23/09/2026 e o caminho foi **verificado de ponta a ponta** (payload sem evento → linha em `unmatched_sales`; reenvio do mesmo payload não duplica). **Falta a tela de reprocessamento** — hoje importar uma órfã ainda é trabalho manual.
 2. 🟡 **Estorno das faturas divididas.** `handleRefund` busca `sales.id = invoice.id` e só acha a linha principal - um estorno de `2b4c5b15…` devolveria R$ 197, não R$ 294.
 3. 🟡 **Order bump subcontado na base inteira.** Outros eventos também têm ofertas `INDIVIDUAL/ORDER BUMP` gravadas como 1 ingresso. Só as duas faturas de Sinop foram corrigidas.
 4. 🟡 **Investimento da Meta em Sinop** não foi investigado - faltava `META_ACCESS_TOKEN` no ambiente local. Palavra-chave das campanhas: `SINOP`.
