@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { eventMatchesText } from "@/lib/matching";
+import { parseHublaSale, isDouble } from "@/lib/hubla";
+import { removeAccents } from "@/lib/utils";
 
 // ─── Tipos do payload Hubla ───────────────────────────────────────────────────
 
@@ -54,19 +56,26 @@ type AppEvent = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function removeAccents(str: string): string {
-  return str
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "") // remove combining diacritics
-    .replace(/[^A-Z0-9 ]/gi, " ")    // substitui caracteres especiais por espaço
-    .replace(/\s+/g, " ")            // colapsa espaços múltiplos
-    .trim()
-    .toUpperCase();
-}
+// Guarda a venda que não casou com nenhum evento, em vez de descartá-la.
+// Sem isto, a venda some sem deixar rastro — foi o que custou 21 vendas em Sinop.
+async function saveOrphanSale(payload: HublaPayload, kind: "payment" | "refund") {
+  const parsed = parseHublaSale(payload);
+  if (!parsed) {
+    console.error("[Hubla] Venda órfã sem nome de oferta — impossível guardar. Payload:", JSON.stringify(payload));
+    return null;
+  }
 
-function isDouble(offerName: string): boolean {
-  const normalized = removeAccents(offerName);
-  return normalized.includes("DUPLO") || normalized.includes("DOUBLE");
+  const { error } = await supabase
+    .from("unmatched_sales")
+    .upsert([{ ...parsed, kind, payload }], { onConflict: "id" });
+
+  if (error) {
+    console.error("[Hubla] FALHA ao guardar venda órfã:", error.message, "| Payload:", JSON.stringify(payload));
+    return null;
+  }
+
+  console.warn("[Hubla] ⚠️ Venda órfã guardada em unmatched_sales:", parsed.id, "|", parsed.offer_name);
+  return parsed;
 }
 
 async function findEvent(offerName: string): Promise<AppEvent | null> {
@@ -169,7 +178,12 @@ async function handlePayment(payload: HublaPayload) {
 
   if (!event) {
     console.warn("[Hubla] Nenhum evento encontrado para oferta:", offerName);
-    return NextResponse.json({ received: true, action: "skipped_no_event", offer: offerName });
+    const orphan = await saveOrphanSale(payload, "payment");
+    return NextResponse.json({
+      received: true,
+      action: orphan ? "saved_unmatched" : "skipped_no_event",
+      offer: offerName,
+    });
   }
 
   // 5. Tipo de ingresso
@@ -306,7 +320,12 @@ async function handleRefund(payload: HublaPayload) {
   const event = await findEvent(offerName);
   if (!event) {
     console.warn("[Hubla Refund] Evento não encontrado para oferta:", offerName);
-    return NextResponse.json({ received: true, action: "skipped_no_event", offer: offerName });
+    const orphan = await saveOrphanSale(payload, "refund");
+    return NextResponse.json({
+      received: true,
+      action: orphan ? "saved_unmatched" : "skipped_no_event",
+      offer: offerName,
+    });
   }
 
   const refundTotalCents   = payload.event?.invoice?.amount?.totalCents ?? 0;
