@@ -8,7 +8,9 @@
 > - **Marca / identidade visual:** EFAGRO Regional (dark mode fixo)
 > - **Pasta local:** `/Users/rafael/circuito-agro`
 > - **Repositório:** https://github.com/darlanrafael/circuito-agro.git
-> - **Última atualização deste doc:** 2026-07-17
+> - **Última atualização deste doc:** 2026-09-23
+
+> **Changelog 2026-09-23**: importadas 21 vendas de Sinop perdidas pelo webhook (ver §16.1); webhook passa a **guardar a venda órfã** em `unmatched_sales` em vez de descartá-la (§5.5, §7.2). **Requer rodar `supabase/migrations/2026-09-23_unmatched_sales.sql`.**
 
 > **Changelog 2026-07-17** (branch `melhorias-dashboard-2026-07`): regra de casamento unificada (`lib/matching.ts`); cálculos financeiros (`lib/finance.ts`); testes com **Vitest**; **arquivamento** de eventos (soft-delete) no lugar de exclusão; **UTMs extras por evento** (`utm_aliases`, tag input); **custos operacionais** (`event_costs`) com **Investimento Total** e **ROI Real**; investimento Meta por evento em "Realizados"; filtros rápidos da Análise agora dinâmicos. **Requer rodar `supabase/migrations/2026-07-17_melhorias.sql`.**
 
@@ -198,6 +200,27 @@ Custos operacionais por evento (all-time, sem data de venda).
 | `created_at` | `timestamptz` | |
 
 Migração: `supabase/migrations/2026-07-17_melhorias.sql`.
+
+### 5.5 Tabela `unmatched_sales` (Supabase) — vendas órfãs do webhook
+
+Venda recebida da Hubla que **não casou com nenhum evento**. Antes ela era descartada; agora fica aqui até ser reprocessada. Ver §16.1.
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | `text` | `invoice.id` da Hubla (PK). Upsert por ele, então retry da Hubla não duplica |
+| `kind` | `text` | `payment` \| `refund` |
+| `offer_name` | `text` | Nome da oferta, texto exato |
+| `ticket_type` | `text` | `individual` \| `duplo` |
+| `faturamento_bruto` / `_liquido` | `numeric` | Mesmo cálculo do webhook |
+| `payer_email` / `payer_name` / `payment_method` | `text` | Comprador |
+| `sale_date` | `timestamptz` | Data da venda |
+| `payload` | `jsonb` | Payload cru, para reprocessar |
+| `received_at` | `timestamptz` | Quando chegou |
+| `resolved_at` / `resolved_event_id` | `timestamptz` / `text` | Preenchidos quando a venda for importada para um evento |
+
+Migração: `supabase/migrations/2026-09-23_unmatched_sales.sql`. **Enquanto ela não rodar**, o insert falha, o erro é logado e o webhook volta ao comportamento antigo (descarta) — sem quebrar o recebimento.
+
+**Reprocessamento ainda é manual** (não há tela nem rota). As linhas pendentes são `resolved_at is null`.
 
 ---
 
@@ -429,6 +452,32 @@ Requer `.env.local` preenchido para Supabase (obrigatório) e Meta (opcional —
 | **`utm_nomenclatura`** | Chave de texto (UPPERCASE) que liga evento ↔ campanha Meta ↔ oferta Hubla |
 | **Hubla** | Plataforma de checkout/venda de ingressos (origem do webhook) |
 | **REGIONAL** | Palavra obrigatória no nome das campanhas Meta desse circuito |
+
+---
+
+## 16. Incidentes
+
+### 16.1 Sinop - 21 vendas perdidas (30/07 a 27/08/2026), corrigido em 23/09/2026
+
+**Sintoma.** O evento de Sinop mostrava 3 vendas e R$ 891,00 de faturamento. A Hubla tinha 24 faturas pagas, R$ 5.761,80.
+
+**Causa raiz.** O evento de Sinop só foi criado em `events` em **31/08/2026 19:56 BRT** (`created_at`), mas o produto já vendia na Hubla desde **30/07**. Durante esses 32 dias o webhook recebeu cada venda, `findEvent()` devolveu `null` e o handler respondeu `skipped_no_event` **descartando o payload sem persistir nada** ([app/api/hubla/webhook/route.ts](app/api/hubla/webhook/route.ts), §7.2). Não foi falha de casamento de UTM nem de cálculo: é o comportamento escrito no código.
+
+**Prova.** O corte é exato - das 21 faturas ausentes, 21 são anteriores ao `created_at` do evento e 0 são posteriores. A hipótese concorrente (webhook fora do ar) foi descartada: na mesma janela o webhook gravou **124 vendas** de outros 5 eventos.
+
+**Correção aplicada.** Importação pontual a partir do export da Hubla, gravando em `sales` no mesmo formato do webhook (`id` = ID da fatura, o que preserva idempotência) e recalculando os contadores do evento. Resultado verificado contra o banco: 26 linhas, 19 individuais, 7 duplos, R$ 5.761,80 bruto / R$ 5.499,14 líquido, batendo com a planilha.
+
+**Decisões de negócio tomadas na importação:**
+- A regional foi adiada de 15/09 para 06/11. As vendas das edições anteriores (produtos `EFAGRO REGIONAL - SINOP` e `- 15/09`) contam para o evento de 06/11.
+- Duas faturas de R$ 294,00 (`2b4c5b15…`, `3e525ca3…`) têm `Itens na fatura = 2` - order bump com um segundo ingresso. Cada uma virou **2 linhas** em `sales`: R$ 197 + R$ 97, líquido rateado. A linha extra usa o id da fatura com sufixo `-bump`.
+
+**Pontos ainda abertos:**
+1. ✅ **Corrigido em 23/09/2026** (branch `fix/vendas-orfas-webhook`): a venda órfã agora é gravada em `unmatched_sales` (§5.5) em vez de descartada, tanto na compra quanto no reembolso. A extração do payload virou função pura testada (`lib/hubla.ts`, `parseHublaSale`). **Falta rodar a migração** e **falta a tela de reprocessamento** — hoje importar uma órfã ainda é trabalho manual.
+2. 🟡 **Estorno das faturas divididas.** `handleRefund` busca `sales.id = invoice.id` e só acha a linha principal - um estorno de `2b4c5b15…` devolveria R$ 197, não R$ 294.
+3. 🟡 **Order bump subcontado na base inteira.** Outros eventos também têm ofertas `INDIVIDUAL/ORDER BUMP` gravadas como 1 ingresso. Só as duas faturas de Sinop foram corrigidas.
+4. 🟡 **Investimento da Meta em Sinop** não foi investigado - faltava `META_ACCESS_TOKEN` no ambiente local. Palavra-chave das campanhas: `SINOP`.
+
+**Higiene de dados notada e não alterada:** `events.city` de Sinop está gravado como `"SINOP "` (espaço no fim) e `utm_aliases` repete o `utm_nomenclatura`.
 
 ---
 
