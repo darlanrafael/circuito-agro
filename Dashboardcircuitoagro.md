@@ -10,7 +10,7 @@
 > - **Repositório:** https://github.com/darlanrafael/circuito-agro.git
 > - **Última atualização deste doc:** 2026-09-23
 
-> **Changelog 2026-09-23**: importadas 21 vendas de Sinop perdidas pelo webhook (ver §16.1); webhook passa a **guardar a venda órfã** em `unmatched_sales` em vez de descartá-la (§5.5, §7.2). **Requer rodar `supabase/migrations/2026-09-23_unmatched_sales.sql`.**
+> **Changelog 2026-09-23**: importadas 21 vendas de Sinop perdidas pelo webhook (§16.1); webhook passa a **guardar a venda órfã** em `unmatched_sales` em vez de descartá-la (§5.5, §7.2); **`fetchMetaCampaigns` agora pagina** - antes lia só as 100 primeiras de 381 campanhas e escondia R$ 220 mil de investimento (§16.2). Migração `supabase/migrations/2026-09-23_unmatched_sales.sql` já rodada.
 
 > **Changelog 2026-07-17** (branch `melhorias-dashboard-2026-07`): regra de casamento unificada (`lib/matching.ts`); cálculos financeiros (`lib/finance.ts`); testes com **Vitest**; **arquivamento** de eventos (soft-delete) no lugar de exclusão; **UTMs extras por evento** (`utm_aliases`, tag input); **custos operacionais** (`event_costs`) com **Investimento Total** e **ROI Real**; investimento Meta por evento em "Realizados"; filtros rápidos da Análise agora dinâmicos. **Requer rodar `supabase/migrations/2026-07-17_melhorias.sql`.**
 
@@ -475,9 +475,37 @@ Requer `.env.local` preenchido para Supabase (obrigatório) e Meta (opcional —
 1. ✅ **Corrigido em 23/09/2026** (branch `fix/vendas-orfas-webhook`): a venda órfã agora é gravada em `unmatched_sales` (§5.5) em vez de descartada, tanto na compra quanto no reembolso. A extração do payload virou função pura testada (`lib/hubla.ts`, `parseHublaSale`). Migração rodada em 23/09/2026 e o caminho foi **verificado de ponta a ponta** (payload sem evento → linha em `unmatched_sales`; reenvio do mesmo payload não duplica). **Falta a tela de reprocessamento** — hoje importar uma órfã ainda é trabalho manual.
 2. 🟡 **Estorno das faturas divididas.** `handleRefund` busca `sales.id = invoice.id` e só acha a linha principal - um estorno de `2b4c5b15…` devolveria R$ 197, não R$ 294.
 3. 🟡 **Order bump subcontado na base inteira.** Outros eventos também têm ofertas `INDIVIDUAL/ORDER BUMP` gravadas como 1 ingresso. Só as duas faturas de Sinop foram corrigidas.
-4. 🟡 **Investimento da Meta em Sinop** não foi investigado - faltava `META_ACCESS_TOKEN` no ambiente local. Palavra-chave das campanhas: `SINOP`.
+4. ✅ **Investimento da Meta em Sinop investigado em 23/09/2026: estava correto.** São 10 campanhas (`SINOP`), todas com `REGIONAL` no nome, R$ 26.666,77 desde sempre, e todas dentro das 100 primeiras da listagem - por isso Sinop foi o **único** evento não afetado pelo defeito de paginação descrito em §16.2.
 
 **Higiene de dados notada e não alterada:** `events.city` de Sinop está gravado como `"SINOP "` (espaço no fim) e `utm_aliases` repete o `utm_nomenclatura`.
+
+### 16.2 Investimento invisível por falta de paginação na Meta (achado e corrigido em 23/09/2026)
+
+**Sintoma.** Cuiabá e Rio Verde apareciam com **investimento R$ 0**, e os demais eventos com valores menores que o real. ROI, CPA e Balanço Geral desses eventos estavam errados.
+
+**Causa raiz.** `fetchMetaCampaigns` pedia `limit=100` e **ignorava `paging.next`** ([lib/meta.ts](lib/meta.ts)). A conta tem **381 campanhas**, das quais **152** contêm `REGIONAL`, mas só **74** caíam nas 100 primeiras. Toda campanha fora dessa janela era invisível para o dashboard.
+
+Achado por acaso, investigando §16.1: Sinop era justamente o único evento **não** afetado, porque suas 10 campanhas ocupam as posições 27 a 82 da listagem.
+
+**Impacto medido antes da correção** (gasto all-time, por evento):
+
+| Evento | App mostrava | Real | Invisível |
+|---|---|---|---|
+| Cuiabá | R$ 0,00 | R$ 57.289,65 | R$ 57.289,65 |
+| Rio Verde | R$ 0,00 | R$ 60.764,25 | R$ 60.764,25 |
+| Luís Eduardo | R$ 30.867,30 | R$ 70.139,62 | R$ 39.272,32 |
+| Uberlândia | R$ 23.786,97 | R$ 56.855,23 | R$ 33.068,26 |
+| Ribeirão | R$ 34.388,55 | R$ 48.283,76 | R$ 13.895,21 |
+| Campo Grande | R$ 56.309,00 | R$ 67.871,21 | R$ 11.562,21 |
+| Belo Horizonte | R$ 18.850,59 | R$ 23.821,42 | R$ 4.970,83 |
+| Sinop | R$ 26.666,77 | R$ 26.666,77 | nenhum |
+| **Total** | | | **R$ 220.822,73** |
+
+**Correção.** Laço que segue `paging.next` até acabar, com teto de 25 páginas e aviso no log se o teto for atingido. Testes em `lib/meta.test.ts` — o de paginação falhava antes da correção, como esperado. A config do Vitest passou a resolver o alias `@/`, sem o qual `lib/meta.ts` não era importável nos testes.
+
+**Verificação.** Com a correção, `/api/meta/campaigns?date_preset=maximum` devolve **152 campanhas / R$ 432.271,63**, idêntico à consulta direta à Graph API paginada, em três medições seguidas.
+
+**Nota para quem mexer aqui depois:** a conta cresce. Se passar de 2.500 campanhas o teto de páginas entra em ação e o log avisa - aumente `MAX_PAGINAS` ou filtre na origem.
 
 ---
 

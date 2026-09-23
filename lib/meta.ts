@@ -59,31 +59,12 @@ export async function fetchMetaCampaigns(opts: FetchOpts): Promise<{
   console.log("[Meta] fetchMetaCampaigns opts:", JSON.stringify(opts));
   console.log("[Meta] API URL:", urlForLog.toString());
 
+  // A Graph API pagina de 100 em 100. Sem seguir paging.next o dashboard só via
+  // a primeira página: com 381 campanhas na conta, eventos cujas campanhas caíam
+  // fora dela apareciam com investimento zero (Cuiabá e Rio Verde, entre outros).
+  const MAX_PAGINAS = 25;
+
   try {
-    const res = await fetch(apiUrl.toString(), { cache: "no-store" });
-    console.log("[Meta] response status:", res.status, res.statusText);
-
-    const rawBody = await res.text();
-    console.log("[Meta] response body (primeiros 2000 chars):", rawBody.slice(0, 2000));
-
-    let data: unknown;
-    try {
-      data = JSON.parse(rawBody);
-    } catch {
-      console.error("[Meta] Resposta não é JSON válido. Body completo:", rawBody);
-      return { campaigns: [], totalSpend: 0, error: "Resposta inválida da Meta API" };
-    }
-
-    const dataObj = data as Record<string, unknown>;
-    if (dataObj.error) {
-      console.error("[Meta] API error completo:", JSON.stringify(dataObj.error));
-      const errObj = dataObj.error as Record<string, unknown>;
-      return { campaigns: [], totalSpend: 0, error: String(errObj.message ?? "Erro desconhecido") };
-    }
-
-    // Remove espaços para matching: "RIOVERDE" bate com "RIO VERDE", "CAMPOGRANDE" com "CAMPO GRANDE"
-    const normalizedCity = opts.city ? normNS(opts.city) : null;
-
     type RawInsights = {
       spend?: string; impressions?: string; clicks?: string;
       cpc?: string; cpm?: string; reach?: string;
@@ -93,8 +74,48 @@ export async function fetchMetaCampaigns(opts: FetchOpts): Promise<{
       insights?: { data?: RawInsights[] };
     };
 
-    const rawCampaigns = (dataObj.data as RawCampaign[]) ?? [];
-    console.log("[Meta] Raw campaigns total:", rawCampaigns.length);
+    const rawCampaigns: RawCampaign[] = [];
+    let nextUrl: string | null = apiUrl.toString();
+    let pagina = 0;
+
+    while (nextUrl && pagina < MAX_PAGINAS) {
+      const res: Response = await fetch(nextUrl, { cache: "no-store" });
+      pagina++;
+      console.log("[Meta] página", pagina, "→ status:", res.status, res.statusText);
+
+      const rawBody = await res.text();
+      if (pagina === 1) {
+        console.log("[Meta] response body (primeiros 2000 chars):", rawBody.slice(0, 2000));
+      }
+
+      let data: unknown;
+      try {
+        data = JSON.parse(rawBody);
+      } catch {
+        console.error("[Meta] Resposta não é JSON válido. Body completo:", rawBody);
+        return { campaigns: [], totalSpend: 0, error: "Resposta inválida da Meta API" };
+      }
+
+      const dataObj = data as Record<string, unknown>;
+      if (dataObj.error) {
+        console.error("[Meta] API error completo:", JSON.stringify(dataObj.error));
+        const errObj = dataObj.error as Record<string, unknown>;
+        return { campaigns: [], totalSpend: 0, error: String(errObj.message ?? "Erro desconhecido") };
+      }
+
+      rawCampaigns.push(...((dataObj.data as RawCampaign[]) ?? []));
+      const paging = dataObj.paging as { next?: string } | undefined;
+      nextUrl = paging?.next ?? null;
+    }
+
+    if (nextUrl) {
+      console.warn("[Meta] Limite de", MAX_PAGINAS, "páginas atingido — pode haver campanha não lida");
+    }
+
+    // Remove espaços para matching: "RIOVERDE" bate com "RIO VERDE", "CAMPOGRANDE" com "CAMPO GRANDE"
+    const normalizedCity = opts.city ? normNS(opts.city) : null;
+
+    console.log("[Meta] Raw campaigns total:", rawCampaigns.length, "em", pagina, "página(s)");
     if (rawCampaigns.length > 0) {
       console.log("[Meta] Sample raw campaign:", JSON.stringify({
         name: rawCampaigns[0].name,
