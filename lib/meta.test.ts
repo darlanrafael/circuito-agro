@@ -104,17 +104,40 @@ describe("fetchMetaCampaigns — régua por evento", () => {
 
 describe("fetchMetaCampaigns — recorte por início de captação", () => {
   it("usa time_range começando no since quando ele é informado", async () => {
-    const fetchStub = vi.fn(async (url: string) => {
-      expect(url).toContain('"since":"2026-07-01"');
+    let urlChamada = "";
+    global.fetch = vi.fn(async (url: string) => {
+      urlChamada = url;
       return {
         status: 200, statusText: "OK",
         text: async () => JSON.stringify({ data: [], paging: {} }),
       } as unknown as Response;
-    });
-    global.fetch = fetchStub as unknown as typeof fetch;
+    }) as unknown as typeof fetch;
 
     await fetchMetaCampaigns({ events: EVENTOS, since: "2026-07-01" });
 
-    expect(fetchStub).toHaveBeenCalledTimes(1);
+    // A URL sai percent-encoded de URLSearchParams; decodifica antes de afirmar.
+    expect(decodeURIComponent(urlChamada)).toContain('"since":"2026-07-01"');
+  });
+
+  it("ignora since quando from e to são informados juntos", async () => {
+    let urlChamada = "";
+    global.fetch = vi.fn(async (url: string) => {
+      urlChamada = url;
+      return {
+        status: 200, statusText: "OK",
+        text: async () => JSON.stringify({ data: [], paging: {} }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    await fetchMetaCampaigns({
+      events: EVENTOS,
+      from: "2026-05-01",
+      to: "2026-05-10",
+      since: "2026-07-01",
+    });
+
+    const urlDecodificada = decodeURIComponent(urlChamada);
+    expect(urlDecodificada).toContain('"since":"2026-05-01"');
+    expect(urlDecodificada).not.toContain("2026-07-01");
   });
 });
