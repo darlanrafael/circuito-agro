@@ -63,6 +63,7 @@ const EMPTY: FormData = {
   stateName: "", status: "em_andamento",
   bandeira_tipo: "auto", bandeira_url: "", bandeira_custom: "",
   utm_nomenclatura: "", utm_aliases: [], is_archived: false,
+  captacao_inicio: null,
 };
 
 function formatBR(value: number): string {

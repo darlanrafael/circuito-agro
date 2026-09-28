@@ -21,6 +21,8 @@ export type AppEvent = {
   utm_nomenclatura: string;
   utm_aliases: string[];
   is_archived: boolean;
+  /** Início da captação da edição atual. Nulo = conta o histórico inteiro. */
+  captacao_inicio: string | null;
 };
 
 export type { EventCost } from "@/lib/finance";
