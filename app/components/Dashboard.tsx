@@ -160,7 +160,8 @@ export function Dashboard({ events }: Props) {
   // Investimento recortado por `since` para os eventos com captação de leads (ex.: EFAGRO
   // Experience) — não usa o período do filtro de cima, e sim a data em que a captação começou.
   const leadEvents = useMemo(() => events.filter((e) => e.captacao_inicio), [events]);
-  const [captacaoInvestment, setCaptacaoInvestment] = useState<Record<string, number>>({});
+  // null = ainda não chegou ou falhou (placeholder no card); número = valor real, inclusive 0.
+  const [captacaoInvestment, setCaptacaoInvestment] = useState<Record<string, number | null>>({});
 
   useEffect(() => {
     Promise.all(leadEvents.map((ev) => {
@@ -168,8 +169,8 @@ export function Dashboard({ events }: Props) {
       if (ev.utm_nomenclatura) params.set("city", ev.utm_nomenclatura);
       return fetch(`/api/meta/campaigns?${params}`)
         .then((r) => r.json())
-        .then((d) => [ev.id, d?.totalSpend ?? 0] as const)
-        .catch(() => [ev.id, 0] as const);
+        .then((d) => [ev.id, d?.error ? null : (d?.totalSpend ?? 0)] as const)
+        .catch(() => [ev.id, null] as const);
     })).then((entries) => setCaptacaoInvestment(Object.fromEntries(entries)));
   }, [leadEvents]);
 
@@ -510,7 +511,7 @@ export function Dashboard({ events }: Props) {
                                 <LeadFunnelCard
                                   eventId={ev.id}
                                   eventName={ev.city}
-                                  investimento={captacaoInvestment[ev.id] ?? 0}
+                                  investimento={captacaoInvestment[ev.id] ?? null}
                                   capacidade={ev.capacity}
                                   individualTickets={ev.individualTickets}
                                   doubleTickets={ev.doubleTickets}

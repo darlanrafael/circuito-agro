@@ -15,8 +15,13 @@ const fmtBRL = (v: number) =>
 type Props = {
   eventId: string;
   eventName: string;
-  /** Gasto em tráfego já recortado desde o início da captação (parâmetro `since`). */
-  investimento: number;
+  /**
+   * Gasto em tráfego já recortado desde o início da captação (parâmetro `since`).
+   * `null` = ainda não chegou ou a busca falhou — nesse caso o card mostra o
+   * mesmo placeholder "—" das outras métricas, nunca R$ 0,00 (zero é só para
+   * quando o valor real, já carregado, é de fato zero).
+   */
+  investimento: number | null;
   capacidade: number;
   individualTickets: number;
   doubleTickets: number;
@@ -43,7 +48,7 @@ export function LeadFunnelCard({
   const vendas  = individualTickets + doubleTickets;
   const pessoas = individualTickets + doubleTickets * 2;
 
-  const cpl       = leads > 0 ? investimento / leads : 0;
+  const cpl       = leads > 0 && investimento !== null ? investimento / leads : 0;
   const conversao = leads > 0 ? (dados?.convertidos ?? 0) / leads : 0;
   const ocupacao  = capacidade > 0 ? pessoas / capacidade : 0;
 
@@ -51,7 +56,7 @@ export function LeadFunnelCard({
   const n = (v: string) => (dados ? v : "—");
 
   const etapas = [
-    { rotulo: "Investimento",    valor: fmtBRL(investimento),          abaixo: null },
+    { rotulo: "Investimento",    valor: investimento === null ? "—" : fmtBRL(investimento), abaixo: null },
     { rotulo: "Leads",           valor: n(String(leads)),              abaixo: n(`${fmtBRL(cpl)} por lead`) },
     { rotulo: "Vendas",          valor: n(String(vendas)),             abaixo: n(`${(conversao * 100).toFixed(1)}% dos leads`) },
     { rotulo: "Vagas ocupadas",  valor: n(`${pessoas} de ${capacidade}`), abaixo: n(`${Math.round(ocupacao * 100)}%`) },
