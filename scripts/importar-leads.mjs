@@ -30,6 +30,14 @@ const env = Object.fromEntries(
 const SB_URL = env.NEXT_PUBLIC_SUPABASE_URL;
 const SB_KEY = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+const envFaltando = [];
+if (!SB_URL) envFaltando.push("NEXT_PUBLIC_SUPABASE_URL");
+if (!SB_KEY) envFaltando.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+if (envFaltando.length) {
+  console.error(`Faltando no .env.local: ${envFaltando.join(", ")}`);
+  process.exit(1);
+}
+
 // ── Mesmas regras de lib/leads.ts ───────────────────────────────────────────
 const PADRAO_TESTE = /teste|testte|exemplo/i;
 const LOTES = ["basic", "standard", "vip", "gold"];
@@ -156,6 +164,20 @@ for (const l of registros) porLote[l.lote] = (porLote[l.lote] ?? 0) + 1;
 console.log("por lote:", porLote);
 
 if (!COMMIT) { console.log("\n>>> SIMULAÇÃO. Nada foi escrito. Rode com --commit para aplicar."); process.exit(0); }
+
+// ── Confere que o evento existe antes de escrever ───────────────────────────
+const confEvento = await fetch(`${SB_URL}/rest/v1/events?id=eq.${EVENT_ID}&select=id`, {
+  headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
+});
+if (!confEvento.ok) {
+  console.error("Falha ao consultar o evento", EVENT_ID, confEvento.status, (await confEvento.text()).slice(0, 600));
+  process.exit(1);
+}
+const eventosEncontrados = await confEvento.json();
+if (!eventosEncontrados.length) {
+  console.error(`O evento "${EVENT_ID}" não existe na tabela events. Rode a migração da Task 5 antes de importar.`);
+  process.exit(1);
+}
 
 for (let i = 0; i < registros.length; i += 500) {
   const bloco = registros.slice(i, i + 500);
