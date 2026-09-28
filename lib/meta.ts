@@ -1,5 +1,4 @@
-import { removeAccents } from "@/lib/utils";
-import { normNS } from "@/lib/matching";
+import { normNS, campaignBelongsToCircuit, type MatchableEvent } from "@/lib/matching";
 
 const META_API_VERSION = "v21.0";
 
@@ -16,6 +15,8 @@ export type MetaCampaign = {
 };
 
 type FetchOpts = {
+  /** Eventos ativos do circuito. Uma campanha só entra se casar com algum deles. */
+  events: MatchableEvent[];
   datePreset?: string;
   from?: string;
   to?: string;
@@ -126,10 +127,9 @@ export async function fetchMetaCampaigns(opts: FetchOpts): Promise<{
 
     const campaigns: MetaCampaign[] = rawCampaigns
       .filter((c) => {
-        const name = removeAccents(c.name);
-        if (!name.includes("REGIONAL")) return false;
+        if (!campaignBelongsToCircuit(c.name, opts.events)) return false;
         // Compara sem espaços para "RIOVERDE" bater "RIO VERDE" na campanha Meta
-        if (normalizedCity && !name.replace(/\s+/g, "").includes(normalizedCity)) return false;
+        if (normalizedCity && !normNS(c.name).includes(normalizedCity)) return false;
         return true;
       })
       .map((c) => {
