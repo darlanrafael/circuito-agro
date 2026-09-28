@@ -153,7 +153,18 @@ export function EventRow({ event, periodIndividual, periodDouble, funil }: { eve
 
       {/* Rodapé de captação: só existe em evento de lead. O dinheiro é o sinal, a palavra é a moldura. */}
       {funil && (
-        <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid #212121", display: "flex", gap: 18, flexWrap: "wrap" }}>
+        <div
+          className="mt-2.5 -mx-3 -mb-3 px-3 py-2.5 md:-mx-[18px] md:-mb-[14px] md:px-[18px]"
+          style={{
+            background: "#1c1c1c",
+            borderTop: "1px solid #242424",
+            borderBottomLeftRadius: 11,
+            borderBottomRightRadius: 11,
+            display: "flex",
+            gap: 18,
+            flexWrap: "wrap",
+          }}
+        >
           <span style={{ fontSize: 10, color: "#4b5563" }}>
             <span style={{ color: "#fbbf24", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
               {funil.investimento === null ? "—" : fmtBRL(funil.investimento)}
