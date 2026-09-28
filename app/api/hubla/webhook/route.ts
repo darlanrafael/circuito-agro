@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { eventMatchesText } from "@/lib/matching";
+import { findEventForSale } from "@/lib/matching";
 import { parseHublaSale, isDouble } from "@/lib/hubla";
 import { removeAccents } from "@/lib/utils";
 
@@ -16,6 +16,9 @@ type HublaOffer = {
 };
 
 type HublaProduct = {
+  /** Id do produto na Hubla. Constante por produto; a oferta (lote) tem id próprio. */
+  id?: string;
+  name?: string;
   offers: HublaOffer[];
 };
 
@@ -48,6 +51,7 @@ type AppEvent = {
   city: string;
   utm_nomenclatura: string;
   utm_aliases: string[];
+  hubla_product_id: string | null;
   individualTickets: number;
   doubleTickets: number;
   faturamento_bruto: number;
@@ -78,10 +82,11 @@ async function saveOrphanSale(payload: HublaPayload, kind: "payment" | "refund")
   return parsed;
 }
 
-async function findEvent(offerName: string): Promise<AppEvent | null> {
+async function findEvent(offerName: string, productId?: string | null, productName?: string | null): Promise<AppEvent | null> {
   const { data: events, error } = await supabase
     .from("events")
-    .select("id, city, utm_nomenclatura, utm_aliases, individualTickets, doubleTickets, faturamento_bruto, faturamento_liquido");
+    .select("id, city, utm_nomenclatura, utm_aliases, hubla_product_id, individualTickets, doubleTickets, faturamento_bruto, faturamento_liquido")
+    .order("id");
 
   if (error || !events) {
     console.error("[Hubla] Erro ao buscar eventos:", error);
@@ -89,14 +94,14 @@ async function findEvent(offerName: string): Promise<AppEvent | null> {
   }
 
   const normalizedOffer = removeAccents(offerName);
-  console.log("[Hubla] Oferta normalizada:", normalizedOffer);
+  console.log("[Hubla] Oferta normalizada:", normalizedOffer, "| produto:", productId ?? "(sem id)");
 
-  // Casamento unificado: UTM principal, aliases ou palavras da cidade (ver lib/matching)
-  for (const ev of events as AppEvent[]) {
-    if (eventMatchesText(ev, offerName)) {
-      console.log("[Hubla] Match:", ev.city, "(utm:", ev.utm_nomenclatura, "aliases:", JSON.stringify(ev.utm_aliases ?? []), ")");
-      return ev;
-    }
+  // Id do produto primeiro (exato); nome da oferta como reserva. Ver lib/matching.
+  const encontrado = findEventForSale(events as AppEvent[], { productId, productName, offerName });
+  if (encontrado) {
+    const porId = !!productId && encontrado.hubla_product_id === productId;
+    console.log("[Hubla] Match:", encontrado.city, porId ? "(pelo id do produto)" : `(pelo nome da oferta, utm: ${encontrado.utm_nomenclatura})`);
+    return encontrado;
   }
 
   console.warn("[Hubla] Nenhum evento encontrado. Oferta normalizada:", normalizedOffer);
@@ -173,7 +178,7 @@ async function handlePayment(payload: HublaPayload) {
     totalCents, platformCents, sellerCents, partnerCents, netAmount);
 
   // 4. Localiza evento
-  const event = await findEvent(offerName);
+  const event = await findEvent(offerName, payload.event?.products?.[0]?.id, payload.event?.products?.[0]?.name);
   console.log("[Hubla] Evento:", event ? `${event.city} (${event.id})` : "NÃO ENCONTRADO");
 
   if (!event) {
@@ -317,7 +322,7 @@ async function handleRefund(payload: HublaPayload) {
     return NextResponse.json({ received: true, action: "skipped_no_offer" });
   }
 
-  const event = await findEvent(offerName);
+  const event = await findEvent(offerName, payload.event?.products?.[0]?.id, payload.event?.products?.[0]?.name);
   if (!event) {
     console.warn("[Hubla Refund] Evento não encontrado para oferta:", offerName);
     const orphan = await saveOrphanSale(payload, "refund");

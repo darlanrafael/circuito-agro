@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normNS, eventMatchesText, spendForEvent, campaignBelongsToCircuit } from "./matching";
+import { normNS, eventMatchesText, spendForEvent, campaignBelongsToCircuit, findEventForSale } from "./matching";
 
 const lem = { city: "Luís Eduardo Magalhães", utm_nomenclatura: "LUISEDUARDO", utm_aliases: ["EM", "LEM"] };
 const bh = { city: "Belo Horizonte", utm_nomenclatura: "BELO HORIZONTE", utm_aliases: [] as string[] };
@@ -66,5 +66,49 @@ describe("campaignBelongsToCircuit", () => {
 
   it("recusa quando não há evento nenhum", () => {
     expect(campaignBelongsToCircuit("[efagro_experience]_lead_frio", [])).toBe(false);
+  });
+});
+
+describe("findEventForSale", () => {
+  const experience = { id: "saopaulo", city: "EFAGRO EXPERIENCE ", utm_nomenclatura: "EXPERIENCE", utm_aliases: ["EX"], hubla_product_id: "4pAjyd6BG6DViGRodJz9" };
+  const ribeirao   = { id: "ribeirao",  city: "Ribeirão Preto",    utm_nomenclatura: "RIBEIRAO",   utm_aliases: [] as string[], hubla_product_id: null };
+  const eventos = [experience, ribeirao];
+
+  it("casa pelo id do produto, mesmo quando o nome da oferta não diz nada", () => {
+    // "Super Early Bird - Vip" não contém EXPERIENCE: só o id do produto salva.
+    const ev = findEventForSale(eventos, { productId: "4pAjyd6BG6DViGRodJz9", offerName: "Super Early Bird - Vip" });
+    expect(ev?.id).toBe("saopaulo");
+  });
+
+  it("id do produto vence o nome da oferta quando os dois apontam para eventos diferentes", () => {
+    // Este é o vazamento real: oferta de Ribeirão com a palavra EXPERIENCE no nome.
+    const ev = findEventForSale(eventos, { productId: null, offerName: "REGIONAL RIBEIRÃO - DUPLO - BÔNUS EXPERIENCE" });
+    expect(ev?.id).toBe("ribeirao");
+  });
+
+  it("cai no nome da oferta quando o produto não está cadastrado em evento nenhum", () => {
+    const ev = findEventForSale(eventos, { productId: "produto-de-outro-curso", offerName: "REGIONAL RIBEIRÃO - INDIVIDUAL" });
+    expect(ev?.id).toBe("ribeirao");
+  });
+
+  it("casa pelo nome do produto quando a oferta não diz a cidade", () => {
+    // Caso real: oferta "INGRESSO DUPLO PARA 6", produto "REGIONAL BELO HORIZONTE - MG - 09/10".
+    const bh = { id: "belohorizonte", city: "Belo Horizonte", utm_nomenclatura: "BELO HORIZONTE", utm_aliases: ["BH"], hubla_product_id: null };
+    const ev = findEventForSale([...eventos, bh], {
+      productId: "PeVRs3m24OQN3lslHHVH",
+      productName: "REGIONAL BELO HORIZONTE - MG - 09/10",
+      offerName: "INGRESSO DUPLO PARA 6",
+    });
+    expect(ev?.id).toBe("belohorizonte");
+  });
+
+  it("devolve null quando nada casa", () => {
+    expect(findEventForSale(eventos, { productId: "xyz", offerName: "Workshop O Fim do Caos" })).toBeNull();
+  });
+
+  it("não deixa a ordem dos eventos decidir: id do produto sempre ganha", () => {
+    const invertido = [ribeirao, experience];
+    const ev = findEventForSale(invertido, { productId: "4pAjyd6BG6DViGRodJz9", offerName: "Lote Final -Vip" });
+    expect(ev?.id).toBe("saopaulo");
   });
 });

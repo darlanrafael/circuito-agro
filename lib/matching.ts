@@ -56,3 +56,46 @@ export function campaignBelongsToCircuit(
 ): boolean {
   return events.some((ev) => eventMatchesText(ev, campaignName));
 }
+
+/** Evento como o casamento de venda precisa vê-lo. */
+export type SaleMatchableEvent = MatchableEvent & {
+  id: string;
+  /** Id do produto na Hubla. Chave exata, quando cadastrada. */
+  hubla_product_id?: string | null;
+};
+
+/**
+ * Acha o evento de uma venda da Hubla.
+ *
+ * O id do produto vence sempre que estiver cadastrado, porque é exato. O nome da
+ * oferta é heurística e vazava: "REGIONAL RIBEIRÃO - DUPLO - BÔNUS EXPERIENCE" casa
+ * com Ribeirão E com o Experience, e quem ganhava era a ordem que o banco devolvia.
+ */
+export function findEventForSale<T extends SaleMatchableEvent>(
+  events: T[],
+  sale: { productId?: string | null; productName?: string | null; offerName?: string | null },
+): T | null {
+  const produto = String(sale.productId ?? "").trim();
+  if (produto) {
+    const exato = events.find((ev) => ev.hubla_product_id && ev.hubla_product_id === produto);
+    if (exato) return exato;
+  }
+  // O nome do PRODUTO vem antes do nome da oferta: o produto carrega a cidade
+  // ("REGIONAL BELO HORIZONTE - MG - 09/10") enquanto a oferta às vezes não diz nada
+  // ("INGRESSO DUPLO PARA 6"), e uma venda assim já se perdeu por isso.
+  const nome = [sale.productName, sale.offerName].find((t) => t && events.some((ev) => eventMatchesText(ev, t))) ?? "";
+  const candidatos = events.filter((ev) => eventMatchesText(ev, nome));
+  if (candidatos.length <= 1) return candidatos[0] ?? null;
+
+  // Mais de um evento casa pelo nome. Nas ofertas da Hubla o assunto principal vem
+  // primeiro ("REGIONAL RIBEIRÃO - DUPLO - BÔNUS EXPERIENCE" é ingresso de Ribeirão),
+  // então vence quem aparece antes. Empate desempata pelo id, para nunca depender da
+  // ordem em que o banco devolveu os eventos.
+  const alvo = normNS(nome);
+  const posicao = (ev: T) => {
+    const codigos = [ev.utm_nomenclatura, ...(ev.utm_aliases ?? [])].filter(Boolean);
+    const idx = codigos.map((c) => alvo.indexOf(normNS(c))).filter((i) => i >= 0);
+    return idx.length ? Math.min(...idx) : Number.MAX_SAFE_INTEGER;
+  };
+  return [...candidatos].sort((a, b) => posicao(a) - posicao(b) || a.id.localeCompare(b.id))[0];
+}
