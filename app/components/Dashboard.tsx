@@ -6,6 +6,7 @@ import { FinancialCard } from "./FinancialCard";
 import { IndicatorCard } from "./IndicatorCard";
 import { EventRow } from "./EventRow";
 import { EventRealizadoRow } from "./EventRealizadoRow";
+import { LeadFunnelCard } from "./LeadFunnelCard";
 import { spendForEvent } from "@/lib/matching";
 import { totalInvestment, realRoi } from "@/lib/finance";
 import type { AppEvent } from "../types";
@@ -155,6 +156,22 @@ export function Dashboard({ events }: Props) {
       })
       .catch(() => setCostsTotal(0));
   }, [filteredEventIds]);
+
+  // Investimento recortado por `since` para os eventos com captação de leads (ex.: EFAGRO
+  // Experience) — não usa o período do filtro de cima, e sim a data em que a captação começou.
+  const leadEvents = useMemo(() => events.filter((e) => e.captacao_inicio), [events]);
+  const [captacaoInvestment, setCaptacaoInvestment] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    Promise.all(leadEvents.map((ev) => {
+      const params = new URLSearchParams({ since: ev.captacao_inicio as string });
+      if (ev.utm_nomenclatura) params.set("city", ev.utm_nomenclatura);
+      return fetch(`/api/meta/campaigns?${params}`)
+        .then((r) => r.json())
+        .then((d) => [ev.id, d?.totalSpend ?? 0] as const)
+        .catch(() => [ev.id, 0] as const);
+    })).then((entries) => setCaptacaoInvestment(Object.fromEntries(entries)));
+  }, [leadEvents]);
 
   const usingSales       = dateFilter !== "all" && !(dateFilter === "custom" && (!dateFrom || !dateTo));
   const approvedSales    = salesData.filter((s) => s.status !== "refunded");
@@ -482,12 +499,25 @@ export function Dashboard({ events }: Props) {
                           </span>
                         </div>
                         <div>{monthEvents.map((ev) => (
-                          <EventRow
-                            key={ev.id}
-                            event={ev}
-                            periodIndividual={usingSales ? (salesByEvent.get(ev.id)?.individual ?? 0) : undefined}
-                            periodDouble={usingSales ? (salesByEvent.get(ev.id)?.duplo ?? 0) : undefined}
-                          />
+                          <div key={ev.id}>
+                            <EventRow
+                              event={ev}
+                              periodIndividual={usingSales ? (salesByEvent.get(ev.id)?.individual ?? 0) : undefined}
+                              periodDouble={usingSales ? (salesByEvent.get(ev.id)?.duplo ?? 0) : undefined}
+                            />
+                            {ev.captacao_inicio && (
+                              <div style={{ marginBottom: 6 }}>
+                                <LeadFunnelCard
+                                  eventId={ev.id}
+                                  eventName={ev.city}
+                                  investimento={captacaoInvestment[ev.id] ?? 0}
+                                  capacidade={ev.capacity}
+                                  individualTickets={ev.individualTickets}
+                                  doubleTickets={ev.doubleTickets}
+                                />
+                              </div>
+                            )}
+                          </div>
                         ))}</div>
                       </div>
                     );
