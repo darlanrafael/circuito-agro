@@ -7,6 +7,8 @@ type Resumo = {
   unicos: number;
   porLote: Record<string, number>;
   convertidos: number;
+  /** Linhas de `sales` com e-mail aproveitável. Zero = não há como medir conversão. */
+  vendasComEmail: number;
 };
 
 const fmtBRL = (v: number) =>
@@ -52,13 +54,22 @@ export function LeadFunnelCard({
   const conversao = leads > 0 ? (dados?.convertidos ?? 0) / leads : 0;
   const ocupacao  = capacidade > 0 ? pessoas / capacidade : 0;
 
+  // "Vendas" e "% dos leads" vêm de fontes diferentes: o número de vendas sai dos
+  // contadores da tabela `events` (mantidos pelo webhook da Hubla) e a conversão sai do
+  // cruzamento de e-mail com a tabela `sales`. Quando nenhuma venda tem e-mail utilizável
+  // não há cruzamento nenhum a fazer, e "0.0% dos leads" logo abaixo de "Vendas 1" leria
+  // como fato medido — é o caso do `saopaulo` hoje, com 1 ingresso nos contadores e a
+  // única linha de `sales` com `payer_email` nulo. Nesse caso a conversão é desconhecida
+  // e mostra o mesmo "—" das outras métricas. Sem lead nenhum também não há denominador.
+  const conversaoConhecida = dados !== null && dados.vendasComEmail > 0 && leads > 0;
+
   // Enquanto carrega, o traço é o mesmo placeholder que as outras telas usam.
   const n = (v: string) => (dados ? v : "—");
 
   const etapas = [
     { rotulo: "Investimento",    valor: investimento === null ? "—" : fmtBRL(investimento), abaixo: null },
     { rotulo: "Leads",           valor: n(String(leads)),              abaixo: dados && investimento !== null ? `${fmtBRL(cpl)} por lead` : "—" },
-    { rotulo: "Vendas",          valor: n(String(vendas)),             abaixo: n(`${(conversao * 100).toFixed(1)}% dos leads`) },
+    { rotulo: "Vendas",          valor: n(String(vendas)),             abaixo: conversaoConhecida ? `${(conversao * 100).toFixed(1)}% dos leads` : "—" },
     { rotulo: "Vagas ocupadas",  valor: n(`${pessoas} de ${capacidade}`), abaixo: n(`${Math.round(ocupacao * 100)}%`) },
   ];
 

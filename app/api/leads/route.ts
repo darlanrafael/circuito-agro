@@ -81,5 +81,14 @@ export async function GET(req: NextRequest) {
   const emailsVenda = new Set(vendas.map((v) => normalizeEmail(v.payer_email ?? "")).filter(Boolean));
   const convertidos = [...emails].filter((e) => emailsVenda.has(e)).length;
 
-  return NextResponse.json({ total: linhas.length, unicos: emails.size, porLote, convertidos });
+  // Quantas linhas de venda trouxeram e-mail aproveitável para o cruzamento. Sem nenhuma,
+  // `convertidos` é 0 por falta de dado, não por medição: não há o que cruzar. O card usa
+  // este número para distinguir os dois casos e mostrar "—" em vez de "0.0% dos leads"
+  // (medido em 28/09: `saopaulo` tem 1 ingresso nos contadores de `events` e 1 linha em
+  // `sales`, com `payer_email` NULO). Se a leitura das vendas falhou acima, o que sobrou
+  // aqui é só o que chegou a ser lido — no limite, zero, que também vira "—": desconhecido,
+  // que é a leitura honesta de uma consulta que falhou.
+  const vendasComEmail = vendas.filter((v) => normalizeEmail(v.payer_email ?? "")).length;
+
+  return NextResponse.json({ total: linhas.length, unicos: emails.size, porLote, convertidos, vendasComEmail });
 }
