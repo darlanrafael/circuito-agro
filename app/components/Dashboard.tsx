@@ -163,13 +163,21 @@ export function Dashboard({ events }: Props) {
   // null = ainda não chegou ou falhou (placeholder no card); número = valor real, inclusive 0.
   const [captacaoInvestment, setCaptacaoInvestment] = useState<Record<string, number | null>>({});
 
+  // A atribuição de campanha ao evento é feita AQUI, com `spendForEvent`, e não pelo
+  // parâmetro `city` da rota. O `city` de `lib/meta.ts` é substring crua sobre o nome da
+  // campanha: ele ignora os apelidos (`utm_aliases`) e não protege código curto de casar
+  // dentro de outra palavra. `spendForEvent` é a regra que o resto do app já usa (inclusive
+  // a lista de realizados, logo abaixo): entende apelido e trata código de até 3 letras como
+  // token isolado. Para o Experience as duas dariam o mesmo número hoje, mas num evento cujas
+  // campanhas só casem por apelido curto o `city` devolveria R$ 0,00 — e o card mostraria
+  // esse zero como valor real, não como "ainda não sei". Por isso a busca leva só o `since`.
   useEffect(() => {
     Promise.all(leadEvents.map((ev) => {
       const params = new URLSearchParams({ since: ev.captacao_inicio as string });
-      if (ev.utm_nomenclatura) params.set("city", ev.utm_nomenclatura);
       return fetch(`/api/meta/campaigns?${params}`)
         .then((r) => r.json())
-        .then((d) => [ev.id, d?.error ? null : (d?.totalSpend ?? 0)] as const)
+        .then((d: { error?: string; campaigns?: MetaCampaign[] }) =>
+          [ev.id, d?.error || !d?.campaigns ? null : spendForEvent(ev, d.campaigns)] as const)
         .catch(() => [ev.id, null] as const);
     })).then((entries) => setCaptacaoInvestment(Object.fromEntries(entries)));
   }, [leadEvents]);
