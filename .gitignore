@@ -45,3 +45,6 @@ next-env.d.ts
 
 # sensitive data — never commit credentials
 data/users.json
+
+# workspace do executor de planos (scratch, não versionar)
+.superpowers/

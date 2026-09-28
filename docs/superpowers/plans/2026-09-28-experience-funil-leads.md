@@ -413,27 +413,7 @@ Dentro do tipo `AppEvent`, depois de `is_archived: boolean;`:
   captacao_inicio: string | null;
 ```
 
-E acrescentar o tipo do lead ao final do arquivo. **`Lote` mora em `lib/leads.ts`**, não aqui: `lib/` é a camada de baixo e não importa de `app/`. É o mesmo arranjo que `EventCost` já usa (`export type { EventCost } from "@/lib/finance"`).
-
-```typescript
-export type { Lote } from "@/lib/leads";
-
-export type Lead = {
-  id: string;
-  event_id: string;
-  nome: string | null;
-  email: string;
-  whatsapp: string | null;
-  lote: Lote;
-  origem: "planilha_antiga" | "lp_nova";
-  utm_source: string | null;
-  utm_medium: string | null;
-  utm_campaign: string | null;
-  utm_term: string | null;
-  utm_content: string | null;
-  lead_date: string;
-};
-```
+> **Ruling do executor (28/09):** os tipos `Lote` e `Lead` **não** entram aqui. Eles dependem de `lib/leads.ts`, que só nasce na Task 6, e o `tsc` do passo 4 quebraria. Foram movidos para o fim da Task 6.
 
 - [ ] **Step 4: Checar tipos**
 
@@ -614,10 +594,37 @@ export function leadIdFrom(id: string | null | undefined, email: string, leadDat
 Run: `npm test`
 Expected: PASS em tudo.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Expor os tipos em `app/types.ts`**
+
+Agora que `lib/leads.ts` existe, acrescentar ao final de `app/types.ts`. `Lote` mora em `lib/`, que é a camada de baixo; `app/types.ts` só reexporta, do mesmo jeito que já faz com `EventCost`.
+
+```typescript
+export type { Lote } from "@/lib/leads";
+
+export type Lead = {
+  id: string;
+  event_id: string;
+  nome: string | null;
+  email: string;
+  whatsapp: string | null;
+  lote: import("@/lib/leads").Lote;
+  origem: "planilha_antiga" | "lp_nova";
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_term: string | null;
+  utm_content: string | null;
+  lead_date: string;
+};
+```
+
+Run: `npx tsc --noEmit`
+Expected: sem saída.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add lib/leads.ts lib/leads.test.ts
+git add lib/leads.ts lib/leads.test.ts app/types.ts
 git commit -m "feat: lib/leads com limpeza, normalização e id idempotente de lead"
 ```
 
@@ -746,7 +753,7 @@ Subir `npm run dev` e disparar os três casos:
 ```bash
 # 1. lead de verdade → saved
 curl -s -X POST http://localhost:3000/api/leads/webhook -H 'Content-Type: application/json' -d '{
- "id":"plano-teste-1","nome":"Fulano da Silva","email":"FULANO@Exemplo.COM.BR","whatsapp":"(11) 99999-0000",
+ "id":"plano-teste-1","nome":"Fulano da Silva","email":"FULANO@Empresa.COM.BR","whatsapp":"(11) 99999-0000",
  "ingresso":"Gold","origem":"EFAGRO Experience Novembro","data":"28/09/2026 11:00:28",
  "pagina":"https://efagroregional.com.br/efagro-experience-lotes/?utm_source=ig&utm_medium=paid_Instagram_Feed"}'
 
@@ -758,7 +765,7 @@ curl -s -X POST http://localhost:3000/api/leads/webhook -H 'Content-Type: applic
 
 Expected: o primeiro responde `{"action":"saved"}`, o reenvio mantém 1 linha na tabela, o terceiro responde `{"action":"skipped_test"}`.
 
-Atenção: o e-mail `FULANO@Exemplo.COM.BR` contém "exemplo" e vai cair na regra de teste. Usar um e-mail que não contenha as palavras da regra, por exemplo `fulano@empresa.com.br`, e conferir que a normalização baixou a caixa.
+Conferir na tabela que o e-mail foi gravado como `fulano@empresa.com.br`, tudo minúsculo: é a prova de que a normalização rodou.
 
 Ao final, apagar os registros de teste da tabela `leads`.
 
@@ -1102,15 +1109,32 @@ Em `lib/meta.ts`, acrescentar `since?: string;` ao `FetchOpts` e trocar o bloco 
   }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [ ] **Step 4: Repassar o `since` pela rota**
+
+> **Ruling do executor (28/09):** sem este passo o parâmetro nasce morto e a Task 12 não teria como recortar o investimento.
+
+Em `app/api/meta/campaigns/route.ts`, ler o parâmetro e repassar:
+
+```typescript
+  const since = searchParams.get("since") ?? undefined;
+```
+
+e incluir `since` no objeto passado para `fetchMetaCampaigns`.
+
+- [ ] **Step 5: Rodar e ver passar**
 
 Run: `npm test && npx tsc --noEmit`
 Expected: PASS, `tsc` limpo.
 
-- [ ] **Step 5: Commit**
+Depois, com o app de pé:
+
+Run: `curl -s "http://localhost:3000/api/meta/campaigns?since=2026-07-01" | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d['campaigns']), round(d['totalSpend'],2))"`
+Expected: total bem menor que o all-time, porque só conta de julho em diante.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add lib/meta.ts lib/meta.test.ts
+git add lib/meta.ts lib/meta.test.ts app/api/meta/campaigns/route.ts
 git commit -m "feat: fetchMetaCampaigns aceita since, para recortar a edição atual"
 ```
 
