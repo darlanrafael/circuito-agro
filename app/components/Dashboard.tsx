@@ -191,7 +191,11 @@ export function Dashboard({ events }: Props) {
   const totalIndividual  = usingSales ? approvedSales.filter((s) => s.ticket_type === "individual").length : filteredEvents.reduce((s, e) => s + e.individualTickets, 0);
   const totalDouble      = usingSales ? approvedSales.filter((s) => s.ticket_type === "duplo").length : filteredEvents.reduce((s, e) => s + e.doubleTickets, 0);
   const totalPeople      = totalIndividual + totalDouble * 2;
-  const totalCapacity    = filteredEvents.length * 350;
+  // Soma a capacidade cadastrada de cada evento em vez de assumir 350 para todos. Os 350
+  // fixos davam 3.150 para os nove eventos ativos, mas oito têm 350 e o `saopaulo` tem
+  // 1.200 — a lotação real é 4.000. O card de funil já lia `ev.capacity`, então a mesma
+  // tela mostrava duas capacidades diferentes para o mesmo evento.
+  const totalCapacity    = filteredEvents.reduce((s, e) => s + (e.capacity || 0), 0);
   const occupancyPct     = totalCapacity > 0 ? Math.round((totalPeople / totalCapacity) * 100) : 0;
 
   const trafficInvestment = filteredEvents.reduce((s, e) => s + e.trafficInvestment, 0);
