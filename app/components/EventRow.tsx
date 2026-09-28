@@ -26,7 +26,18 @@ function getBarColor(occupancy: number): string {
   return "#22c55e";
 }
 
-export function EventRow({ event, periodIndividual, periodDouble }: { event: AppEvent; periodIndividual?: number; periodDouble?: number }) {
+/** Evento de captação (o Experience) troca ingressos por leads e ganha o rodapé de custo. */
+export type FunilLeads = {
+  /** Pessoas distintas que preencheram o formulário. `null` enquanto carrega. */
+  leads: number | null;
+  /** Gasto de tráfego desde o início da captação. `null` enquanto carrega ou se a Meta falhar. */
+  investimento: number | null;
+};
+
+const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const fmtBRL2 = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+export function EventRow({ event, periodIndividual, periodDouble, funil }: { event: AppEvent; periodIndividual?: number; periodDouble?: number; funil?: FunilLeads }) {
   const [days, setDays] = useState<number>(0);
 
   useEffect(() => {
@@ -48,6 +59,9 @@ export function EventRow({ event, periodIndividual, periodDouble }: { event: App
 
   const badge: BadgeStyle = event.status === "adiado"
     ? { label: "Adiado", bg: "#1f1a0a", color: "#fbbf24", border: "#92400e" }
+    // Evento de captação não está "vendendo": está juntando lead para o comercial trabalhar.
+    : funil && (funil.leads ?? 0) > 0
+    ? { label: "Captando leads", bg: "#0f1a1f", color: "#7dd3fc", border: "#155e75" }
     : getAutoStatus(historicalOccupancy);
 
   const dateObj       = new Date(event.date + "T00:00:00");
@@ -102,12 +116,16 @@ export function EventRow({ event, periodIndividual, periodDouble }: { event: App
 
         <div style={{ display: "flex", gap: 16, minWidth: 140 }}>
           <div style={{ textAlign: "center" }}>
-            <p style={{ fontSize: 9, textTransform: "uppercase", color: "#4b5563", letterSpacing: "0.1em" }}>Individual</p>
-            <p style={{ fontSize: 16, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>{displayIndividual}</p>
+            <p style={{ fontSize: 9, textTransform: "uppercase", color: "#4b5563", letterSpacing: "0.1em" }}>{funil ? "Leads" : "Individual"}</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>
+              {funil ? (funil.leads === null ? "—" : funil.leads.toLocaleString("pt-BR")) : displayIndividual}
+            </p>
           </div>
           <div style={{ textAlign: "center" }}>
-            <p style={{ fontSize: 9, textTransform: "uppercase", color: "#4b5563", letterSpacing: "0.1em" }}>Duplo</p>
-            <p style={{ fontSize: 16, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>{displayDouble}</p>
+            <p style={{ fontSize: 9, textTransform: "uppercase", color: "#4b5563", letterSpacing: "0.1em" }}>{funil ? "Vendas" : "Duplo"}</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: "white", fontVariantNumeric: "tabular-nums" }}>
+              {funil ? displayIndividual + displayDouble : displayDouble}
+            </p>
           </div>
         </div>
 
@@ -133,6 +151,26 @@ export function EventRow({ event, periodIndividual, periodDouble }: { event: App
         </div>
       </div>
 
+      {/* Rodapé de captação: só existe em evento de lead. O dinheiro é o sinal, a palavra é a moldura. */}
+      {funil && (
+        <div style={{ marginTop: 10, paddingTop: 9, borderTop: "1px solid #212121", display: "flex", gap: 18, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 10, color: "#4b5563" }}>
+            <span style={{ color: "#fbbf24", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+              {funil.investimento === null ? "—" : fmtBRL(funil.investimento)}
+            </span>{" "}
+            investidos em tráfego
+          </span>
+          <span style={{ fontSize: 10, color: "#4b5563" }}>
+            <span style={{ color: "#fbbf24", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+              {funil.investimento === null || funil.leads === null || funil.leads === 0
+                ? "—"
+                : fmtBRL2(funil.investimento / funil.leads)}
+            </span>{" "}
+            por lead
+          </span>
+        </div>
+      )}
+
       {/* ── Mobile layout (< md) ── */}
       <div className="md:hidden">
         {/* Linha 1: bandeira + cidade + badge */}
@@ -154,7 +192,9 @@ export function EventRow({ event, periodIndividual, periodDouble }: { event: App
             <p style={{ fontSize: 10, color: "#4b5563" }}>{daysLabel}</p>
           </div>
           <p style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>
-            IND: {displayIndividual} · DUP: {displayDouble}
+            {funil
+              ? `Leads: ${funil.leads === null ? "—" : funil.leads.toLocaleString("pt-BR")} · Vendas: ${displayIndividual + displayDouble}`
+              : `IND: ${displayIndividual} · DUP: ${displayDouble}`}
           </p>
         </div>
 

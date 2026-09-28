@@ -6,7 +6,6 @@ import { FinancialCard } from "./FinancialCard";
 import { IndicatorCard } from "./IndicatorCard";
 import { EventRow } from "./EventRow";
 import { EventRealizadoRow } from "./EventRealizadoRow";
-import { LeadFunnelCard } from "./LeadFunnelCard";
 import { spendForEvent } from "@/lib/matching";
 import { totalInvestment, realRoi } from "@/lib/finance";
 import type { AppEvent } from "../types";
@@ -180,6 +179,19 @@ export function Dashboard({ events }: Props) {
           [ev.id, d?.error || !d?.campaigns ? null : spendForEvent(ev, d.campaigns)] as const)
         .catch(() => [ev.id, null] as const);
     })).then((entries) => setCaptacaoInvestment(Object.fromEntries(entries)));
+  }, [leadEvents]);
+
+  // Pessoas distintas que preencheram o formulário. null = ainda não chegou ou falhou.
+  const [leadsPorEvento, setLeadsPorEvento] = useState<Record<string, number | null>>({});
+
+  useEffect(() => {
+    Promise.all(leadEvents.map((ev) =>
+      fetch(`/api/leads?event_id=${ev.id}`)
+        .then((r) => r.json())
+        .then((d: { error?: string; unicos?: number }) =>
+          [ev.id, d?.error || typeof d?.unicos !== "number" ? null : d.unicos] as const)
+        .catch(() => [ev.id, null] as const),
+    )).then((entries) => setLeadsPorEvento(Object.fromEntries(entries)));
   }, [leadEvents]);
 
   const usingSales       = dateFilter !== "all" && !(dateFilter === "custom" && (!dateFrom || !dateTo));
@@ -512,25 +524,16 @@ export function Dashboard({ events }: Props) {
                           </span>
                         </div>
                         <div>{monthEvents.map((ev) => (
-                          <div key={ev.id}>
-                            <EventRow
-                              event={ev}
-                              periodIndividual={usingSales ? (salesByEvent.get(ev.id)?.individual ?? 0) : undefined}
-                              periodDouble={usingSales ? (salesByEvent.get(ev.id)?.duplo ?? 0) : undefined}
-                            />
-                            {ev.captacao_inicio && (
-                              <div style={{ marginBottom: 6 }}>
-                                <LeadFunnelCard
-                                  eventId={ev.id}
-                                  eventName={ev.city}
-                                  investimento={captacaoInvestment[ev.id] ?? null}
-                                  capacidade={ev.capacity}
-                                  individualTickets={ev.individualTickets}
-                                  doubleTickets={ev.doubleTickets}
-                                />
-                              </div>
-                            )}
-                          </div>
+                          <EventRow
+                            key={ev.id}
+                            event={ev}
+                            periodIndividual={usingSales ? (salesByEvent.get(ev.id)?.individual ?? 0) : undefined}
+                            periodDouble={usingSales ? (salesByEvent.get(ev.id)?.duplo ?? 0) : undefined}
+                            funil={ev.captacao_inicio ? {
+                              leads: leadsPorEvento[ev.id] ?? null,
+                              investimento: captacaoInvestment[ev.id] ?? null,
+                            } : undefined}
+                          />
                         ))}</div>
                       </div>
                     );
