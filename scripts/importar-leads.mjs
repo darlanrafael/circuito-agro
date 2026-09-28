@@ -8,6 +8,10 @@
 // limpeza abaixo (isTestLead, normalizeEmail, normalizeLote, leadIdFrom, utmsFromUrl)
 // são uma cópia em JavaScript puro das mesmas funções de `lib/leads.ts`.
 // `lib/leads.ts` é a FONTE DA VERDADE dessas regras: se mudar lá, mude aqui também.
+//
+// `idDaListaAntiga` é a única regra que NÃO existe em `lib/leads.ts`, de propósito: ela
+// só vale para o CSV da planilha antiga, que não tem coluna de ID e traz data sem hora.
+// Ver o comentário na própria função.
 
 import fs from "node:fs";
 import { createHash } from "node:crypto";
@@ -53,6 +57,26 @@ const leadIdFrom = (id, email, data) => {
   if (limpo) return limpo;
   return createHash("sha1").update(`${normalizeEmail(email)}|${data}`).digest("hex").slice(0, 24);
 };
+
+// ── Id da lista antiga (regra só deste script) ───────────────────────────────
+// A lista antiga não tem coluna de ID e a data vem SEM HORA ("16-07-2026"), então
+// `e-mail + data` não distingue duas manifestações de interesse da mesma pessoa no
+// mesmo dia: os ids colidem e o `Map` por id lá embaixo descarta a linha anterior em
+// silêncio. Medido nos CSVs reais com a regra antiga: 42 ids com mais de uma linha,
+// 50 linhas perdidas, 34 delas de LOTES DIFERENTES — o que deformava a distribuição
+// por lote (de `vip 520, standard 643, basic 266, gold 101`, o que a spec 3.2 registra,
+// para `vip 500, standard 623, basic 262, gold 95`) e contrariava o que a migração
+// promete (`supabase/migrations/2026-09-28_leads.sql`: uma linha por preenchimento,
+// dedup por pessoa só na LEITURA). Por isso o lote entra no hash.
+//
+// Colisão que sobra de propósito: mesma pessoa, mesmo dia, MESMO lote. Sem hora na
+// planilha essas linhas são indistinguíveis, e colapsá-las é o comportamento certo
+// para um reenvio da mesma informação.
+//
+// A lista NOVA não usa esta função: ela tem o `ID` da própria planilha, que já é
+// único por preenchimento, e passa por `leadIdFrom` (cópia fiel de `lib/leads.ts`).
+const idDaListaAntiga = (email, data, lote) =>
+  createHash("sha1").update(`${normalizeEmail(email)}|${data}|${lote}`).digest("hex").slice(0, 24);
 const UTMS_VAZIAS = { utm_source: null, utm_medium: null, utm_campaign: null, utm_term: null, utm_content: null };
 function utmsFromUrl(url) {
   if (!url) return { ...UTMS_VAZIAS };
@@ -112,11 +136,12 @@ function daListaAntiga(linhas) {
     const e = normalizeEmail(email);
     const data = dataParaUTC(r["data_preenchimento"]);
     if (!e || !data) { descartados.push(r); continue; }
+    const lote = normalizeLote(r["Ingresso"]);
     out.push({
-      id: leadIdFrom(null, e, data), event_id: EVENT_ID,
+      id: idDaListaAntiga(e, data, lote), event_id: EVENT_ID,
       nome: (nome ?? "").trim() || null, email: e,
       whatsapp: (r["Qual o seu DDD + WhatsApp?"] ?? "").trim() || null,
-      lote: normalizeLote(r["Ingresso"]), origem: "planilha_antiga",
+      lote, origem: "planilha_antiga",
       utm_source: r["utm_source"] || null, utm_medium: r["utm_medium"] || null,
       utm_campaign: r["utm_campaign"] || null, utm_term: r["utm_term"] || null,
       utm_content: r["utm_content"] || null,
