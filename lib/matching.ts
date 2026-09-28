@@ -46,3 +46,13 @@ export function spendForEvent(
     .filter((c) => eventMatchesText(ev, c.name))
     .reduce((sum, c) => sum + (c.spend || 0), 0);
 }
+
+// Uma campanha pertence ao circuito quando casa com algum evento cadastrado.
+// Substitui a antiga regra de "tem a palavra REGIONAL no nome", que escondia
+// todo o EFAGRO Experience (ver spec 2026-09-28).
+export function campaignBelongsToCircuit(
+  campaignName: string,
+  events: MatchableEvent[],
+): boolean {
+  return events.some((ev) => eventMatchesText(ev, campaignName));
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normNS, eventMatchesText, spendForEvent } from "./matching";
+import { normNS, eventMatchesText, spendForEvent, campaignBelongsToCircuit } from "./matching";
 
 const lem = { city: "Luís Eduardo Magalhães", utm_nomenclatura: "LUISEDUARDO", utm_aliases: ["EM", "LEM"] };
 const bh = { city: "Belo Horizonte", utm_nomenclatura: "BELO HORIZONTE", utm_aliases: [] as string[] };
@@ -43,5 +43,28 @@ describe("spendForEvent", () => {
       { name: "REGIONAL LEM VIDEO", spend: 25 },
     ];
     expect(spendForEvent(lem, campaigns)).toBe(125);
+  });
+});
+
+describe("campaignBelongsToCircuit", () => {
+  const eventos = [
+    { city: "Belo Horizonte", utm_nomenclatura: "BELO HORIZONTE", utm_aliases: ["BH"] },
+    { city: "EFAGRO EXPERIENCE", utm_nomenclatura: "EXPERIENCE", utm_aliases: ["EX"] },
+  ];
+
+  it("aceita campanha do Experience, que não tem a palavra REGIONAL", () => {
+    expect(campaignBelongsToCircuit("[efagro_experience]_lead_frio_cbo_set26", eventos)).toBe(true);
+  });
+
+  it("aceita campanha que casa por apelido curto isolado", () => {
+    expect(campaignBelongsToCircuit("LEAD_ABO_REGIONAL_MOV_BH-newpgs", eventos)).toBe(true);
+  });
+
+  it("recusa campanha de cidade que não é do circuito", () => {
+    expect(campaignBelongsToCircuit("[C01] REGIONAL -LONDRINA - PR", eventos)).toBe(false);
+  });
+
+  it("recusa quando não há evento nenhum", () => {
+    expect(campaignBelongsToCircuit("[efagro_experience]_lead_frio", [])).toBe(false);
   });
 });
