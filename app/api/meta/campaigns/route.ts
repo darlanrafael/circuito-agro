@@ -15,8 +15,7 @@ export async function GET(req: NextRequest) {
   const { data: events, error } = await supabase
     .from("events")
     .select("city, utm_nomenclatura, utm_aliases")
-    .eq("is_archived", false)
-    .not("utm_nomenclatura", "is", null);
+    .eq("is_archived", false);
 
   if (error) {
     console.error("[Meta] Erro ao ler eventos para a régua:", error.message);
