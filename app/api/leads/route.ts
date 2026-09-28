@@ -56,12 +56,17 @@ export async function GET(req: NextRequest) {
   const porLote: Record<string, number> = {};
   for (const l of linhas) porLote[l.lote ?? "nao_informado"] = (porLote[l.lote ?? "nao_informado"] ?? 0) + 1;
 
+  // Em SQL, `status <> 'refunded'` dá UNKNOWN (não true) quando `status` é nulo, e
+  // essa linha some do resultado sem erro. Hoje a coluna sempre vem preenchida
+  // (approved/refunded, por default do banco), mas o filtro usa `.or(status.is.null,
+  // status.neq.refunded)` em vez de `.neq()` para não depender disso: se um dia
+  // entrar uma venda com status nulo, ela continua contando como conversão.
   const { rows: vendas, error: erroVendas } = await fetchAllPages<SaleRow>((from, to) =>
     supabase
       .from("sales")
       .select("payer_email")
       .eq("event_id", eventId)
-      .neq("status", "refunded")
+      .or("status.is.null,status.neq.refunded")
       .order("id", { ascending: true })
       .range(from, to)
   );
