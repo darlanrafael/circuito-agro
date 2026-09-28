@@ -77,6 +77,7 @@ const leadIdFrom = (id, email, data) => {
 // único por preenchimento, e passa por `leadIdFrom` (cópia fiel de `lib/leads.ts`).
 const idDaListaAntiga = (email, data, lote) =>
   createHash("sha1").update(`${normalizeEmail(email)}|${data}|${lote}`).digest("hex").slice(0, 24);
+
 const UTMS_VAZIAS = { utm_source: null, utm_medium: null, utm_campaign: null, utm_term: null, utm_content: null };
 function utmsFromUrl(url) {
   if (!url) return { ...UTMS_VAZIAS };
@@ -218,8 +219,27 @@ for (let i = 0; i < registros.length; i += 500) {
   console.log(`  gravado ${Math.min(i + 500, registros.length)}/${registros.length}`);
 }
 
-const conf = await fetch(`${SB_URL}/rest/v1/leads?event_id=eq.${EVENT_ID}&select=email,lote`, {
-  headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
-});
-const gravados = await conf.json();
+// A conferência é paginada pelo mesmo motivo que `app/api/leads/route.ts`: o PostgREST
+// corta a resposta em 1000 linhas por padrão e não avisa — a resposta continua sendo 200.
+// Numa consulta só, esta conferência imprimiria 1000 para mais de 1500 gravados e pareceria
+// que a importação falhou. O `order=id.asc` é o que torna a paginação estável.
+const PAGINA = 1000;
+const gravados = [];
+for (let de = 0; ; de += PAGINA) {
+  const conf = await fetch(
+    `${SB_URL}/rest/v1/leads?event_id=eq.${EVENT_ID}&select=email,lote&order=id.asc&offset=${de}&limit=${PAGINA}`,
+    { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } },
+  );
+  if (!conf.ok) {
+    console.error(
+      `FALHA na conferência (a partir da linha ${de}). A gravação terminou, mas a contagem final não pôde ser lida:`,
+      conf.status, (await conf.text()).slice(0, 600),
+    );
+    process.exit(1);
+  }
+  const pagina = await conf.json();
+  gravados.push(...pagina);
+  if (pagina.length < PAGINA) break;
+}
+
 console.log(`\nCONFERÊNCIA no banco: ${gravados.length} linhas | ${new Set(gravados.map((l) => l.email)).size} e-mails distintos`);
