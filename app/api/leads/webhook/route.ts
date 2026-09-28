@@ -92,14 +92,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true, action: "skipped_no_event", origem: textoDoEvento });
   }
 
-  // Sem id da planilha e sem data, o hash de idempotência (lib/leads.ts leadIdFrom)
-  // cairia no instante atual, que muda a cada chamada — um reenvio duplicaria em vez
-  // de atualizar. Não dá para resolver de verdade sem um dos dois; só fica registrado
-  // que a garantia não vale para este lead específico.
-  if (!corpo.id?.trim() && !corpo.data) {
-    console.warn("[Leads] Lead sem id e sem data — idempotência não pode ser garantida:", email);
-  }
-
   const leadDate = dataBrasiliaParaUTC(corpo.data);
   const registro = {
     id: leadIdFrom(corpo.id, email, leadDate),
@@ -113,6 +105,15 @@ export async function POST(req: NextRequest) {
     lead_date: leadDate,
     payload: corpo,
   };
+
+  // Sem id da planilha e sem data, o hash de idempotência (lib/leads.ts leadIdFrom)
+  // cairia no instante atual, que muda a cada chamada — um reenvio duplicaria em vez
+  // de atualizar. Não dá para resolver de verdade sem um dos dois; só fica registrado
+  // que a garantia não vale para este registro, pelo próprio id (já identifica a
+  // linha no banco, sem expor dado pessoal).
+  if (!corpo.id?.trim() && !corpo.data) {
+    console.warn("[Leads] Lead sem id e sem data — idempotência não pode ser garantida:", registro.id, registro.lote);
+  }
 
   const { error } = await supabase.from("leads").upsert([registro], { onConflict: "id" });
   if (error) {
