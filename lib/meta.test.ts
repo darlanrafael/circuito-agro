@@ -101,3 +101,20 @@ describe("fetchMetaCampaigns — régua por evento", () => {
     expect(r.totalSpend).toBe(0);
   });
 });
+
+describe("fetchMetaCampaigns — recorte por início de captação", () => {
+  it("usa time_range começando no since quando ele é informado", async () => {
+    const fetchStub = vi.fn(async (url: string) => {
+      expect(url).toContain('"since":"2026-07-01"');
+      return {
+        status: 200, statusText: "OK",
+        text: async () => JSON.stringify({ data: [], paging: {} }),
+      } as unknown as Response;
+    });
+    global.fetch = fetchStub as unknown as typeof fetch;
+
+    await fetchMetaCampaigns({ events: EVENTOS, since: "2026-07-01" });
+
+    expect(fetchStub).toHaveBeenCalledTimes(1);
+  });
+});

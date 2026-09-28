@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
   const datePreset = searchParams.get("date_preset") ?? undefined;
   const from = searchParams.get("from") ?? undefined;
   const to = searchParams.get("to") ?? undefined;
+  const since = searchParams.get("since") ?? undefined;
   const city = searchParams.get("city") ?? undefined;
 
   // A régua de campanha é o conjunto de eventos ativos. Arquivado não conta.
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Erro ao ler eventos." }, { status: 500 });
   }
 
-  const result = await fetchMetaCampaigns({ datePreset, from, to, city, events: events ?? [] });
+  const result = await fetchMetaCampaigns({ datePreset, from, to, since, city, events: events ?? [] });
 
   if (result.error === "not_configured") {
     return NextResponse.json({ error: "not_configured" }, { status: 503 });

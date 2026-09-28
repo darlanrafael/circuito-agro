@@ -20,6 +20,8 @@ type FetchOpts = {
   datePreset?: string;
   from?: string;
   to?: string;
+  /** Início do recorte (AAAA-MM-DD). Usado quando não vêm `from`/`to`; a janela vai até hoje. */
+  since?: string;
   city?: string;
 };
 
@@ -42,6 +44,11 @@ export async function fetchMetaCampaigns(opts: FetchOpts): Promise<{
   let insightsField: string;
   if (opts.from && opts.to) {
     insightsField = `insights.time_range({"since":"${opts.from}","until":"${opts.to}"}){spend,impressions,clicks,cpc,cpm,reach}`;
+  } else if (opts.since) {
+    // UTC de propósito: o "until" é só o teto da janela de gasto, então pedir até
+    // amanhã (quando o UTC já virou o dia em BRT à noite) nunca inventa gasto.
+    const hoje = new Date().toISOString().slice(0, 10);
+    insightsField = `insights.time_range({"since":"${opts.since}","until":"${hoje}"}){spend,impressions,clicks,cpc,cpm,reach}`;
   } else {
     const preset = opts.datePreset || "last_30d";
     insightsField = `insights.date_preset(${preset}){spend,impressions,clicks,cpc,cpm,reach}`;
