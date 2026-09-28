@@ -13,6 +13,12 @@ describe("isTestLead", () => {
   it("não derruba lead de verdade", () => {
     expect(isTestLead("Lucas Morais", "lucas.waishaupt@gmail.com")).toBe(false);
   });
+  it("pega e-mail de teste mesmo com nome limpo", () => {
+    expect(isTestLead("Maria Silva", "teste@exemplo.com")).toBe(true);
+  });
+  it("pega nome de teste mesmo com e-mail limpo", () => {
+    expect(isTestLead("Teste Completo", "maria.silva@gmail.com")).toBe(true);
+  });
 });
 
 describe("normalizeLote", () => {
@@ -37,13 +43,13 @@ describe("normalizeEmail", () => {
 
 describe("utmsFromUrl", () => {
   it("extrai as UTMs da URL da landing page", () => {
-    const url = "https://efagroregional.com.br/efagro-experience-lotes/?utm_source=ig&utm_medium=paid_Instagram_Feed&utm_campaign=%5Befagro_experience%5D_lead_frio_cbo_est%C3%A1ticos_set02&utm_term=ad03_vendas#ingressos";
+    const url = "https://efagroregional.com.br/efagro-experience-lotes/?utm_source=ig&utm_medium=paid_Instagram_Feed&utm_campaign=%5Befagro_experience%5D_lead_frio_cbo_est%C3%A1ticos_set02&utm_term=ad03_vendas&utm_content=banner_a#ingressos";
     expect(utmsFromUrl(url)).toEqual({
       utm_source: "ig",
       utm_medium: "paid_Instagram_Feed",
       utm_campaign: "[efagro_experience]_lead_frio_cbo_estáticos_set02",
       utm_term: "ad03_vendas",
-      utm_content: null,
+      utm_content: "banner_a",
     });
   });
   it("devolve tudo nulo quando não há UTM nem URL válida", () => {
@@ -65,5 +71,10 @@ describe("leadIdFrom", () => {
     const b = leadIdFrom(null, "a@b.com", "2026-09-28T14:00:00.000Z");
     expect(a).toBe(b);
     expect(a).not.toBe(leadIdFrom(null, "c@d.com", "2026-09-28T14:00:00.000Z"));
+  });
+  it("gera ids diferentes pro mesmo e-mail em datas diferentes", () => {
+    const a = leadIdFrom(null, "a@b.com", "2026-09-28T14:00:00.000Z");
+    const b = leadIdFrom(null, "a@b.com", "2026-10-01T09:00:00.000Z");
+    expect(a).not.toBe(b);
   });
 });
