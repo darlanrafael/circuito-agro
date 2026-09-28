@@ -57,7 +57,7 @@ export function LeadFunnelCard({
 
   const etapas = [
     { rotulo: "Investimento",    valor: investimento === null ? "—" : fmtBRL(investimento), abaixo: null },
-    { rotulo: "Leads",           valor: n(String(leads)),              abaixo: n(`${fmtBRL(cpl)} por lead`) },
+    { rotulo: "Leads",           valor: n(String(leads)),              abaixo: dados && investimento !== null ? `${fmtBRL(cpl)} por lead` : "—" },
     { rotulo: "Vendas",          valor: n(String(vendas)),             abaixo: n(`${(conversao * 100).toFixed(1)}% dos leads`) },
     { rotulo: "Vagas ocupadas",  valor: n(`${pessoas} de ${capacidade}`), abaixo: n(`${Math.round(ocupacao * 100)}%`) },
   ];
