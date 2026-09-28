@@ -59,7 +59,25 @@ function enviarLeadParaDashboard(linha) {
       payload: JSON.stringify(corpo),
       muteHttpExceptions: true
     });
-    return resp.getResponseCode() === 200 ? 'ok' : 'erro http ' + resp.getResponseCode();
+
+    if (resp.getResponseCode() !== 200) {
+      return 'erro http ' + resp.getResponseCode();
+    }
+
+    // Atenção: o código 200 aqui NÃO quer dizer que o lead entrou. A rota responde 200
+    // em todos os caminhos de propósito, inclusive quando descarta a linha — é isso que
+    // impede a planilha de ficar reenviando a mesma linha para sempre. Quem diz se o lead
+    // entrou é o campo `action` do corpo da resposta: só `saved` é sucesso. Qualquer outro
+    // valor significa que NENHUM lead foi gravado, e é esse valor que vai para a coluna,
+    // para dar de cara o motivo.
+    var resposta;
+    try {
+      resposta = JSON.parse(resp.getContentText());
+    } catch (erroJson) {
+      return 'resposta ilegível: ' + resp.getContentText().slice(0, 80);
+    }
+
+    return resposta.action === 'saved' ? 'ok' : (resposta.action || 'sem action');
   } catch (e) {
     return 'erro: ' + e;
   }
@@ -106,12 +124,31 @@ antes da função terminar.
 ## Passo 4: Criar a coluna `Dashboard` na planilha
 
 Na planilha (não no script), acrescente uma coluna nova chamada `Dashboard`, logo ao lado da
-coluna `Meta API`. É nela que o resultado do envio para o Dashboard vai aparecer: `ok` quando
-deu certo, ou uma mensagem de erro quando não deu.
+coluna `Meta API`. É nela que o resultado do envio para o Dashboard vai aparecer.
 
 Essa coluna serve para você enxergar, olhando a planilha, se o envio para o Dashboard está
 funcionando, sem precisar perguntar para ninguém. É a mesma lógica que a coluna `Meta API` já
 cumpre hoje para o envio da Meta.
+
+**Só `ok` quer dizer que o lead entrou no Dashboard.** Qualquer outro valor quer dizer que o
+lead **não** foi gravado, e o próprio valor já diz o motivo:
+
+| O que aparece na coluna | O que aconteceu | O que fazer |
+|---|---|---|
+| `ok` | O lead foi gravado. | Nada. |
+| `skipped_test` | A linha foi entendida como teste (tem `teste`, `testte` ou `exemplo` no nome ou no e-mail). | Nada, se era teste mesmo. Se era lead de verdade, avise a equipe: o nome ou o e-mail caiu na regra sem querer. |
+| `skipped_no_email` | A linha chegou sem e-mail. | O e-mail é o que identifica a pessoa; sem ele não há lead. Confira a linha na planilha. |
+| `skipped_no_event` | O Dashboard não reconheceu o evento pelo texto da coluna `Origem`. | Avise a equipe. Costuma ser a coluna `Origem` com outro texto. |
+| `skipped_invalid_json`, `skipped_invalid_body` | O Dashboard não entendeu o que foi enviado. | Avise a equipe: é problema no envio, não na linha. |
+| `db_error` | O Dashboard entendeu, mas não conseguiu gravar no banco. | Avise a equipe. |
+| `erro http 404`, `erro http 500`… | O endereço respondeu, mas com erro. | Confira se o endereço do Passo 2 está certo; se estiver, avise a equipe. |
+| `erro: ...` (erro de conexão) | Nem chegou a falar com o Dashboard. | Enquanto o endereço não existir, é o esperado (veja o Passo 2). |
+
+O motivo de essa distinção existir: a rota do Dashboard responde "recebi" (código 200) em
+**todos** esses casos, inclusive quando descarta a linha. Isso é de propósito, para a planilha
+não ficar reenviando a mesma linha sem parar. Por isso o trecho de código do Passo 2 olha o
+campo `action` da resposta em vez de olhar só o código 200 — se olhasse só o código, a coluna
+mostraria `ok` mesmo com nenhum lead entrando.
 
 ---
 
@@ -123,10 +160,18 @@ cumpre hoje para o envio da Meta.
 3. Confira a planilha: a coluna `Dashboard` deve preencher em poucos segundos, do lado da
    `Meta API`.
 
-Enquanto o endereço do Dashboard ainda não estiver no ar (veja o Passo 2), o que vai aparecer
-na coluna `Dashboard` é uma mensagem de erro de conexão, não `ok`. Isso é esperado nessa fase
-e não indica um problema no que você colou. Assim que o endereço real substituir
-`SEU-DOMINIO-NA-VERCEL`, o mesmo teste deve passar a mostrar `ok`.
+Duas coisas para esperar nesse teste:
+
+- **Enquanto o endereço do Dashboard ainda não estiver no ar** (veja o Passo 2), o que vai
+  aparecer na coluna `Dashboard` é uma mensagem de erro de conexão, não `ok`. Isso é esperado
+  nessa fase e não indica um problema no que você colou.
+- **Se você preencher o formulário com um nome de teste** (qualquer coisa com `teste` ou
+  `exemplo`), a coluna vai mostrar `skipped_test`, não `ok` — essa linha é descartada de
+  propósito. Para ver o `ok` de verdade, use um nome e um e-mail que não pareçam teste, ou
+  espere a próxima inscrição real.
+
+Com o endereço real no lugar de `SEU-DOMINIO-NA-VERCEL` e uma linha que não seja de teste, o
+esperado é `ok`. Qualquer outro valor está explicado na tabela do Passo 4.
 
 ---
 
