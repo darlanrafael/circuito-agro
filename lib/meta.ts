@@ -1,5 +1,4 @@
-import { removeAccents } from "@/lib/utils";
-import { normNS } from "@/lib/matching";
+import { normNS, campaignBelongsToCircuit, type MatchableEvent } from "@/lib/matching";
 
 const META_API_VERSION = "v21.0";
 
@@ -16,9 +15,13 @@ export type MetaCampaign = {
 };
 
 type FetchOpts = {
+  /** Eventos ativos do circuito. Uma campanha só entra se casar com algum deles. */
+  events: MatchableEvent[];
   datePreset?: string;
   from?: string;
   to?: string;
+  /** Início do recorte (AAAA-MM-DD). Usado quando não vêm `from`/`to`; a janela vai até hoje. */
+  since?: string;
   city?: string;
 };
 
@@ -41,6 +44,11 @@ export async function fetchMetaCampaigns(opts: FetchOpts): Promise<{
   let insightsField: string;
   if (opts.from && opts.to) {
     insightsField = `insights.time_range({"since":"${opts.from}","until":"${opts.to}"}){spend,impressions,clicks,cpc,cpm,reach}`;
+  } else if (opts.since) {
+    // UTC de propósito: o "until" é só o teto da janela de gasto, então pedir até
+    // amanhã (quando o UTC já virou o dia em BRT à noite) nunca inventa gasto.
+    const hoje = new Date().toISOString().slice(0, 10);
+    insightsField = `insights.time_range({"since":"${opts.since}","until":"${hoje}"}){spend,impressions,clicks,cpc,cpm,reach}`;
   } else {
     const preset = opts.datePreset || "last_30d";
     insightsField = `insights.date_preset(${preset}){spend,impressions,clicks,cpc,cpm,reach}`;
@@ -126,10 +134,9 @@ export async function fetchMetaCampaigns(opts: FetchOpts): Promise<{
 
     const campaigns: MetaCampaign[] = rawCampaigns
       .filter((c) => {
-        const name = removeAccents(c.name);
-        if (!name.includes("REGIONAL")) return false;
+        if (!campaignBelongsToCircuit(c.name, opts.events)) return false;
         // Compara sem espaços para "RIOVERDE" bater "RIO VERDE" na campanha Meta
-        if (normalizedCity && !name.replace(/\s+/g, "").includes(normalizedCity)) return false;
+        if (normalizedCity && !normNS(c.name).includes(normalizedCity)) return false;
         return true;
       })
       .map((c) => {

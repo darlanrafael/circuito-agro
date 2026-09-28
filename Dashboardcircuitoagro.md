@@ -8,7 +8,9 @@
 > - **Marca / identidade visual:** EFAGRO Regional (dark mode fixo)
 > - **Pasta local:** `/Users/rafael/circuito-agro`
 > - **Repositório:** https://github.com/darlanrafael/circuito-agro.git
-> - **Última atualização deste doc:** 2026-09-23
+> - **Última atualização deste doc:** 2026-09-28
+
+> **Changelog 2026-09-28** (branch `feat/experience-funil-leads`): **régua de campanha da Meta trocada** - deixa de ser "tem REGIONAL no nome" e passa a ser "casa com algum evento cadastrado" (§7.10). Sem isso o **EFAGRO Experience ficava 100% invisível, R$ 286.607,75 fora do dashboard** (§16.3). Apelidos `BH` e `EM` cadastrados, recuperando R$ 22.125,77 que ficavam órfãos. Cascavel marcado como cancelado. **Funil de leads** para o Experience: tabela `leads` (§5.6), webhook `/api/leads/webhook`, coluna `captacao_inicio` para separar edições, e bloco de funil no Dashboard. **Requer rodar `supabase/migrations/2026-09-28_regua_campanhas.sql` e `2026-09-28_leads.sql`, nessa ordem.**
 
 > **Changelog 2026-09-23**: importadas 21 vendas de Sinop perdidas pelo webhook (§16.1); webhook passa a **guardar a venda órfã** em `unmatched_sales` em vez de descartá-la (§5.5, §7.2); **`fetchMetaCampaigns` agora pagina** - antes lia só as 100 primeiras de 381 campanhas e escondia R$ 220 mil de investimento (§16.2). Migração `supabase/migrations/2026-09-23_unmatched_sales.sql` já rodada.
 
@@ -222,6 +224,31 @@ Migração: `supabase/migrations/2026-09-23_unmatched_sales.sql`, **rodada em 23
 
 **Reprocessamento ainda é manual** (não há tela nem rota). As linhas pendentes são `resolved_at is null`.
 
+### 5.6 Tabela `leads` (Supabase) - captação do EFAGRO Experience
+
+O Experience é o único evento do circuito que funciona por **captação de lead**, não por venda direta: investimento → lead → venda do comercial → vaga ocupada. Os outros 8 eventos não usam esta tabela.
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | `text` PK | Idempotência. Na LP nova, o `ID` da própria planilha. Na lista antiga, hash de `e-mail + data + lote` |
+| `event_id` | `text` | FK → `events.id` |
+| `nome`, `email`, `whatsapp` | `text` | `email` gravado normalizado: minúsculo, sem espaço nas pontas |
+| `lote` | `text` | `basic` \| `standard` \| `vip` \| `gold` \| `nao_informado` |
+| `origem` | `text` | `planilha_antiga` \| `lp_nova` |
+| `utm_*` | `text` | Da planilha antiga em colunas próprias; da LP nova, extraídas da URL |
+| `lead_date` | `timestamptz` | Preenchimento, em UTC |
+| `payload` | `jsonb` | Linha crua, para auditoria |
+
+**Uma linha por preenchimento.** A mesma pessoa que escolheu Standard e depois Gold gera 2 linhas com o mesmo e-mail, de propósito. A dedup por pessoa é feita **na leitura** (contagem de e-mails distintos), nunca na escrita.
+
+### 5.7 Coluna `events.captacao_inicio`
+
+`date \| null`. Início da captação da edição atual. Investimento e leads anteriores não contam. `saopaulo` recebe `2026-07-01`. Nula nos demais eventos, que seguem contando o histórico inteiro.
+
+Existe porque o Experience já teve uma edição em **maio/2026** e a de **novembro** é outra. Sem o corte, o custo por lead sai contaminado. **Junho não teve um centavo de investimento**, o que deu o corte natural entre as duas.
+
+⚠️ **O corte só está aplicado no bloco de funil do Dashboard.** O KPI de investimento do topo e as linhas de "Realizados" continuam somando a história inteira do evento. Ver §16.3, pontos abertos.
+
 ---
 
 ## 6. Rotas
@@ -329,6 +356,19 @@ Ao salvar manualmente um evento, `faturamento_liquido = faturamento_bruto × 0.8
 ### 7.9 Geração de `id` do evento
 
 Em `AdminPage.handleAdd`: `id` derivado da cidade — `NFD`, remove diacríticos, `toLowerCase()`, remove tudo que não seja `[a-z0-9]`. Ex.: "Luís Eduardo" → `luiseduardo`.
+
+### 7.10 Régua de campanha da Meta (mudou em 2026-09-28)
+
+**Antes:** `fetchMetaCampaigns` descartava toda campanha cujo nome não contivesse a palavra `REGIONAL`.
+
+**Agora:** uma campanha pertence ao circuito quando **casa com algum evento ativo cadastrado**, via `campaignBelongsToCircuit(nome, eventos)` → `eventMatchesText` (§7.1). Evento arquivado ou cancelado não entra na régua.
+
+Consequências:
+- `totalSpend` deixa de significar "tudo que tem REGIONAL" e passa a significar "tudo que pertence a algum evento do circuito".
+- As duas rotas que chamam `fetchMetaCampaigns` (`/api/meta/campaigns` e `/api/utm/analysis`) precisam passar a lista de eventos ativos. **Lista vazia é tratada como erro**, nunca como "investimento zero".
+- `fetchMetaCampaigns` aceita `since` (`AAAA-MM-DD`) para recortar a janela de gasto.
+
+**Por que os apelidos importam:** campanhas de Belo Horizonte usam `BH` e as de Luís Eduardo usam `EM` (de Eduardo Magalhães). Sem esses apelidos cadastrados em `utm_aliases`, R$ 22.125,77 ficariam sem evento. A regra de token isolado (§7.1) impede que `EM` case dentro de "BELÉM" ou "SISTEMA".
 
 ---
 
@@ -506,6 +546,35 @@ Achado por acaso, investigando §16.1: Sinop era justamente o único evento **n�
 **Verificação.** Com a correção, `/api/meta/campaigns?date_preset=maximum` devolve **152 campanhas / R$ 432.271,63**, idêntico à consulta direta à Graph API paginada, em três medições seguidas.
 
 **Nota para quem mexer aqui depois:** a conta cresce. Se passar de 2.500 campanhas o teto de páginas entra em ação e o log avisa - aumente `MAX_PAGINAS` ou filtre na origem.
+
+### 16.3 EFAGRO Experience invisível e funil de leads (2026-09-28)
+
+**Sintoma.** O Experience aparecia zerado no dashboard: sem investimento e sem nenhuma métrica de captação.
+
+**Causa raiz.** Duas, independentes:
+1. `fetchMetaCampaigns` só aceitava campanha com `REGIONAL` no nome. As 25 campanhas do Experience seguem o padrão `[efagro_experience]_lead_frio_...`. **R$ 286.607,75 invisíveis.**
+2. O dashboard não conhecia o conceito de lead, e o Experience vende por captação, não por venda direta.
+
+**Medido em 28/09/2026, contra a Graph API e o banco:**
+
+| | Antes | Depois |
+|---|---|---|
+| Campanhas na régua | 158 | 181 |
+| Investimento atribuído | R$ 442.908,11 | R$ 728.088,78 |
+| Experience | R$ 0,00 | R$ 286.607,75 |
+| Belo Horizonte | R$ 23.831,60 | R$ 36.652,26 |
+| Luís Eduardo | R$ 70.139,62 | R$ 79.444,73 |
+
+Gasto do Experience por edição: **jan a mai R$ 199.054,18** (edição de maio), **junho R$ 0,00**, **jul a set R$ 87.250,81** (edição de novembro). Cerca de **R$ 60 por lead** sobre 1.455 leads.
+
+**Pontos abertos, em ordem de importância:**
+1. 🔴 **O corte por `captacao_inicio` só vale no bloco de funil.** O KPI de investimento do topo, o CPA e o ROI continuam somando as duas edições do Experience. Corrigir exige uma chamada por evento à Meta, em vez de uma só para todos.
+2. 🟡 **Lead que não casa com evento só vai para o log.** Não há tabela de órfãos como a de vendas (§5.5).
+3. 🟡 **Cruzamento lead → venda é por e-mail.** Quem comprar com outro e-mail não conta como conversão.
+4. 🟡 **Webhook de leads sem segredo compartilhado.** Quem souber a URL insere lead. Mesma postura do webhook da Hubla.
+5. 🟡 **Importação e `lib/leads.ts` duplicam as regras de limpeza.** O script é Node avulso e não importa TypeScript. `lib/leads.ts` é a fonte da verdade.
+
+**Corrigido de passagem:** a ocupação do topo usava **350 fixo** para todos os eventos. O Experience tem **1.200** cadastrados, então a capacidade real do circuito é 4.000 e o dashboard mostrava 3.150. Agora soma `capacity` de cada evento.
 
 ---
 

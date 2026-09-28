@@ -6,6 +6,7 @@ import { FinancialCard } from "./FinancialCard";
 import { IndicatorCard } from "./IndicatorCard";
 import { EventRow } from "./EventRow";
 import { EventRealizadoRow } from "./EventRealizadoRow";
+import { LeadFunnelCard } from "./LeadFunnelCard";
 import { spendForEvent } from "@/lib/matching";
 import { totalInvestment, realRoi } from "@/lib/finance";
 import type { AppEvent } from "../types";
@@ -156,6 +157,31 @@ export function Dashboard({ events }: Props) {
       .catch(() => setCostsTotal(0));
   }, [filteredEventIds]);
 
+  // Investimento recortado por `since` para os eventos com captação de leads (ex.: EFAGRO
+  // Experience) — não usa o período do filtro de cima, e sim a data em que a captação começou.
+  const leadEvents = useMemo(() => events.filter((e) => e.captacao_inicio), [events]);
+  // null = ainda não chegou ou falhou (placeholder no card); número = valor real, inclusive 0.
+  const [captacaoInvestment, setCaptacaoInvestment] = useState<Record<string, number | null>>({});
+
+  // A atribuição de campanha ao evento é feita AQUI, com `spendForEvent`, e não pelo
+  // parâmetro `city` da rota. O `city` de `lib/meta.ts` é substring crua sobre o nome da
+  // campanha: ele ignora os apelidos (`utm_aliases`) e não protege código curto de casar
+  // dentro de outra palavra. `spendForEvent` é a regra que o resto do app já usa (inclusive
+  // a lista de realizados, logo abaixo): entende apelido e trata código de até 3 letras como
+  // token isolado. Para o Experience as duas dariam o mesmo número hoje, mas num evento cujas
+  // campanhas só casem por apelido curto o `city` devolveria R$ 0,00 — e o card mostraria
+  // esse zero como valor real, não como "ainda não sei". Por isso a busca leva só o `since`.
+  useEffect(() => {
+    Promise.all(leadEvents.map((ev) => {
+      const params = new URLSearchParams({ since: ev.captacao_inicio as string });
+      return fetch(`/api/meta/campaigns?${params}`)
+        .then((r) => r.json())
+        .then((d: { error?: string; campaigns?: MetaCampaign[] }) =>
+          [ev.id, d?.error || !d?.campaigns ? null : spendForEvent(ev, d.campaigns)] as const)
+        .catch(() => [ev.id, null] as const);
+    })).then((entries) => setCaptacaoInvestment(Object.fromEntries(entries)));
+  }, [leadEvents]);
+
   const usingSales       = dateFilter !== "all" && !(dateFilter === "custom" && (!dateFrom || !dateTo));
   const approvedSales    = salesData.filter((s) => s.status !== "refunded");
   const refundedSales    = salesData.filter((s) => s.status === "refunded");
@@ -165,7 +191,11 @@ export function Dashboard({ events }: Props) {
   const totalIndividual  = usingSales ? approvedSales.filter((s) => s.ticket_type === "individual").length : filteredEvents.reduce((s, e) => s + e.individualTickets, 0);
   const totalDouble      = usingSales ? approvedSales.filter((s) => s.ticket_type === "duplo").length : filteredEvents.reduce((s, e) => s + e.doubleTickets, 0);
   const totalPeople      = totalIndividual + totalDouble * 2;
-  const totalCapacity    = filteredEvents.length * 350;
+  // Soma a capacidade cadastrada de cada evento em vez de assumir 350 para todos. Os 350
+  // fixos davam 3.150 para os nove eventos ativos, mas oito têm 350 e o `saopaulo` tem
+  // 1.200 — a lotação real é 4.000. O card de funil já lia `ev.capacity`, então a mesma
+  // tela mostrava duas capacidades diferentes para o mesmo evento.
+  const totalCapacity    = filteredEvents.reduce((s, e) => s + (e.capacity || 0), 0);
   const occupancyPct     = totalCapacity > 0 ? Math.round((totalPeople / totalCapacity) * 100) : 0;
 
   const trafficInvestment = filteredEvents.reduce((s, e) => s + e.trafficInvestment, 0);
@@ -482,12 +512,25 @@ export function Dashboard({ events }: Props) {
                           </span>
                         </div>
                         <div>{monthEvents.map((ev) => (
-                          <EventRow
-                            key={ev.id}
-                            event={ev}
-                            periodIndividual={usingSales ? (salesByEvent.get(ev.id)?.individual ?? 0) : undefined}
-                            periodDouble={usingSales ? (salesByEvent.get(ev.id)?.duplo ?? 0) : undefined}
-                          />
+                          <div key={ev.id}>
+                            <EventRow
+                              event={ev}
+                              periodIndividual={usingSales ? (salesByEvent.get(ev.id)?.individual ?? 0) : undefined}
+                              periodDouble={usingSales ? (salesByEvent.get(ev.id)?.duplo ?? 0) : undefined}
+                            />
+                            {ev.captacao_inicio && (
+                              <div style={{ marginBottom: 6 }}>
+                                <LeadFunnelCard
+                                  eventId={ev.id}
+                                  eventName={ev.city}
+                                  investimento={captacaoInvestment[ev.id] ?? null}
+                                  capacidade={ev.capacity}
+                                  individualTickets={ev.individualTickets}
+                                  doubleTickets={ev.doubleTickets}
+                                />
+                              </div>
+                            )}
+                          </div>
                         ))}</div>
                       </div>
                     );
