@@ -129,6 +129,7 @@ export async function GET(req: NextRequest) {
   const { data: eventsData, error: evError } = await supabase
     .from("events")
     .select("id, city, state, utm_nomenclatura, utm_aliases, individualTickets, doubleTickets")
+    .eq("is_archived", false)
     .order("city");
 
   if (evError || !eventsData) {
@@ -208,7 +209,7 @@ export async function GET(req: NextRequest) {
 
   console.log("[UTM] fetchMetaCampaigns opts:", JSON.stringify(metaOpts));
 
-  const metaResult = await fetchMetaCampaigns(metaOpts);
+  const metaResult = await fetchMetaCampaigns({ ...metaOpts, events });
 
   console.log("[UTM] campanhas Meta retornadas:", metaResult.campaigns.map((c) => c.name));
   console.log("[UTM] totalSpend:", metaResult.totalSpend);
