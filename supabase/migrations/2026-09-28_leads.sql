@@ -28,6 +28,7 @@ create index if not exists idx_leads_email on leads(email);
 create index if not exists idx_leads_date  on leads(lead_date);
 
 alter table leads enable row level security;
+drop policy if exists "leads anon all" on leads;
 create policy "leads anon all" on leads for all using (true) with check (true);
 
 -- Início da captação da edição atual. Investimento e leads anteriores a esta
