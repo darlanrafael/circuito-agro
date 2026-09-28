@@ -30,3 +30,21 @@ export type SessionUser = {
   nome: string;
   role: string;
 };
+
+export type { Lote } from "@/lib/leads";
+
+export type Lead = {
+  id: string;
+  event_id: string;
+  nome: string | null;
+  email: string;
+  whatsapp: string | null;
+  lote: import("@/lib/leads").Lote;
+  origem: "planilha_antiga" | "lp_nova";
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_term: string | null;
+  utm_content: string | null;
+  lead_date: string;
+};
