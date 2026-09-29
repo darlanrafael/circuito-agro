@@ -171,28 +171,38 @@ export function Dashboard({ events }: Props) {
   // campanhas só casem por apelido curto o `city` devolveria R$ 0,00 — e o card mostraria
   // esse zero como valor real, não como "ainda não sei". Por isso a busca leva só o `since`.
   useEffect(() => {
+    const range = getDateRange(dateFilter, dateFrom, dateTo);
     Promise.all(leadEvents.map((ev) => {
-      const params = new URLSearchParams({ since: ev.captacao_inicio as string });
+      // Em "Todo o período" (range nulo) o corte é o início da captação, não a história
+      // inteira: senão a edição anterior do evento volta a entrar na conta.
+      const params = range
+        ? new URLSearchParams({ from: range.from.split("T")[0], to: range.to.split("T")[0] })
+        : new URLSearchParams({ since: ev.captacao_inicio as string });
       return fetch(`/api/meta/campaigns?${params}`)
         .then((r) => r.json())
         .then((d: { error?: string; campaigns?: MetaCampaign[] }) =>
           [ev.id, d?.error || !d?.campaigns ? null : spendForEvent(ev, d.campaigns)] as const)
         .catch(() => [ev.id, null] as const);
     })).then((entries) => setCaptacaoInvestment(Object.fromEntries(entries)));
-  }, [leadEvents]);
+  }, [leadEvents, dateFilter, dateFrom, dateTo]);
 
   // Pessoas distintas que preencheram o formulário. null = ainda não chegou ou falhou.
   const [leadsPorEvento, setLeadsPorEvento] = useState<Record<string, number | null>>({});
 
   useEffect(() => {
-    Promise.all(leadEvents.map((ev) =>
-      fetch(`/api/leads?event_id=${ev.id}`)
+    const range = getDateRange(dateFilter, dateFrom, dateTo);
+    Promise.all(leadEvents.map((ev) => {
+      const params = new URLSearchParams({ event_id: ev.id });
+      // "Todo o período" para um evento de captação começa no início da captação.
+      params.set("from", range ? range.from : `${ev.captacao_inicio}T00:00:00.000Z`);
+      if (range) params.set("to", range.to);
+      return fetch(`/api/leads?${params}`)
         .then((r) => r.json())
         .then((d: { error?: string; unicos?: number }) =>
           [ev.id, d?.error || typeof d?.unicos !== "number" ? null : d.unicos] as const)
-        .catch(() => [ev.id, null] as const),
-    )).then((entries) => setLeadsPorEvento(Object.fromEntries(entries)));
-  }, [leadEvents]);
+        .catch(() => [ev.id, null] as const);
+    })).then((entries) => setLeadsPorEvento(Object.fromEntries(entries)));
+  }, [leadEvents, dateFilter, dateFrom, dateTo]);
 
   const usingSales       = dateFilter !== "all" && !(dateFilter === "custom" && (!dateFrom || !dateTo));
   const approvedSales    = salesData.filter((s) => s.status !== "refunded");

@@ -34,17 +34,26 @@ async function fetchAllPages<T>(
 }
 
 export async function GET(req: NextRequest) {
-  const eventId = new URL(req.url).searchParams.get("event_id");
+  const { searchParams } = new URL(req.url);
+  const eventId = searchParams.get("event_id");
   if (!eventId) return NextResponse.json({ error: "event_id é obrigatório" }, { status: 400 });
 
-  const { rows: linhas, error: erroLeads } = await fetchAllPages<LeadRow>((from, to) =>
-    supabase
+  // Recorte de período. Sem `from`/`to`, conta tudo. O Dashboard manda a janela do
+  // seletor de cima, para o funil acompanhar "Hoje", "7 dias" e companhia; em "Todo o
+  // período" ele manda o início da captação, e não a história inteira, senão a edição
+  // anterior do evento volta a se misturar com a atual.
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+
+  const { rows: linhas, error: erroLeads } = await fetchAllPages<LeadRow>((inicio, fim) => {
+    let q = supabase
       .from("leads")
       .select("email, lote")
-      .eq("event_id", eventId)
-      .order("id", { ascending: true })
-      .range(from, to)
-  );
+      .eq("event_id", eventId);
+    if (from) q = q.gte("lead_date", from);
+    if (to) q = q.lte("lead_date", to);
+    return q.order("id", { ascending: true }).range(inicio, fim);
+  });
 
   if (erroLeads) {
     console.error("[Leads] Erro ao ler:", erroLeads);
@@ -61,15 +70,16 @@ export async function GET(req: NextRequest) {
   // (approved/refunded, por default do banco), mas o filtro usa `.or(status.is.null,
   // status.neq.refunded)` em vez de `.neq()` para não depender disso: se um dia
   // entrar uma venda com status nulo, ela continua contando como conversão.
-  const { rows: vendas, error: erroVendas } = await fetchAllPages<SaleRow>((from, to) =>
-    supabase
+  const { rows: vendas, error: erroVendas } = await fetchAllPages<SaleRow>((inicio, fim) => {
+    let q = supabase
       .from("sales")
       .select("payer_email")
       .eq("event_id", eventId)
-      .or("status.is.null,status.neq.refunded")
-      .order("id", { ascending: true })
-      .range(from, to)
-  );
+      .or("status.is.null,status.neq.refunded");
+    if (from) q = q.gte("sale_date", from);
+    if (to) q = q.lte("sale_date", to);
+    return q.order("id", { ascending: true }).range(inicio, fim);
+  });
 
   if (erroVendas) {
     console.error("[Leads] Erro ao ler vendas para cruzar conversão:", erroVendas);
