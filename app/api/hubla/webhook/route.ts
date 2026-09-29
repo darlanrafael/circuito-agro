@@ -196,19 +196,18 @@ async function handlePayment(payload: HublaPayload) {
   console.log("[Hubla] Ingresso:", ticketIsDouble ? "Duplo" : "Individual");
 
   // 6. Atualiza Supabase
-  const updates = {
-    individualTickets: event.individualTickets + (ticketIsDouble ? 0 : 1),
-    doubleTickets:     event.doubleTickets     + (ticketIsDouble ? 1 : 0),
-    faturamento_bruto:   parseFloat((event.faturamento_bruto   + grossAmount).toFixed(2)),
-    faturamento_liquido: parseFloat((event.faturamento_liquido + netAmount).toFixed(2)),
-  };
+  // A soma acontece DENTRO do banco. Ler o contador, somar no código e regravar perdia
+  // um ingresso sempre que duas vendas chegavam no mesmo instante: as duas liam o mesmo
+  // número e as duas gravavam o mesmo resultado. Aconteceu 3 vezes (Campo Grande,
+  // Ribeirão e Uberlândia), cada uma com um par de vendas separadas por 0,1 segundo.
+  console.log("[Hubla] Somando no evento", event.id, ticketIsDouble ? "duplo" : "individual", grossAmount);
 
-  console.log("[Hubla] Atualizando", event.id, "→", updates);
-
-  const { error: updateError } = await supabase
-    .from("events")
-    .update(updates)
-    .eq("id", event.id);
+  const { error: updateError } = await supabase.rpc("incrementar_venda", {
+    p_event_id: event.id,
+    p_duplo: ticketIsDouble,
+    p_bruto: grossAmount,
+    p_liquido: netAmount,
+  });
 
   if (updateError) {
     console.error("[Hubla] Erro no update:", updateError);
@@ -381,13 +380,13 @@ async function decrementEvent(
   bruto: number,
   liquido: number,
 ) {
-  const updates = {
-    individualTickets: Math.max(0, event.individualTickets - (ticketIsDouble ? 0 : 1)),
-    doubleTickets:     Math.max(0, event.doubleTickets     - (ticketIsDouble ? 1 : 0)),
-    faturamento_bruto:   parseFloat(Math.max(0, event.faturamento_bruto   - bruto).toFixed(2)),
-    faturamento_liquido: parseFloat(Math.max(0, event.faturamento_liquido - liquido).toFixed(2)),
-  };
-  console.log("[Hubla Refund] Decrementando evento", event.id, "→", updates);
-  const { error } = await supabase.from("events").update(updates).eq("id", event.id);
+  // Subtração atômica, pelo mesmo motivo do incremento.
+  console.log("[Hubla Refund] Subtraindo do evento", event.id, ticketIsDouble ? "duplo" : "individual", bruto);
+  const { error } = await supabase.rpc("decrementar_venda", {
+    p_event_id: event.id,
+    p_duplo: ticketIsDouble,
+    p_bruto: bruto,
+    p_liquido: liquido,
+  });
   if (error) console.error("[Hubla Refund] Erro ao decrementar evento:", error);
 }
